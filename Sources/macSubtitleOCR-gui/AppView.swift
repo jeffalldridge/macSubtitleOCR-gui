@@ -19,7 +19,3 @@ struct AppView: View {
         .padding(20)
     }
 }
-
-// Temporary stubs — will be replaced in later tasks.
-struct RunView: View { var body: some View { Text("Run") } }
-struct DoneView: View { var body: some View { Text("Done") } }
