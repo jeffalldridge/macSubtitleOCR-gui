@@ -26,7 +26,9 @@ permissions:
 jobs:
   release:
     name: Build, notarize, and publish
-    runs-on: macos-14
+    # macos-15 ships Xcode 16+ with Swift 6 (required by the macSubtitleOCR
+    # submodule's swift-tools-version). macos-14 has Swift 5.10 and fails.
+    runs-on: macos-15
     timeout-minutes: 45
 
     steps:
@@ -35,8 +37,11 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Show toolchain
+      - name: Select Xcode 16
         run: |
+          sudo xcode-select -s /Applications/Xcode_16.2.app || \
+            sudo xcode-select -s /Applications/Xcode_16.1.app || \
+            sudo xcode-select -s /Applications/Xcode_16.0.app
           swift --version
           xcodebuild -version
 
