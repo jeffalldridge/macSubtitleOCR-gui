@@ -222,6 +222,11 @@ for lib in "$FW_DIR"/*.dylib; do
     adhoc_sign "$lib"
 done
 
+# Sign the outer .app bundle last so its seal covers the re-signed nested code.
+# Without this, `codesign --verify` reports "nested code is modified or invalid"
+# even though every inner Mach-O is individually well-signed.
+codesign --force --sign - "$APP" 2>/dev/null || true
+
 # --- Sanity check ---
 echo "==> Verifying bundle"
 verify() {
