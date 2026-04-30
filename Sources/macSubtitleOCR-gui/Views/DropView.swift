@@ -67,8 +67,8 @@ struct DropView: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundStyle(.orange)
             VStack(alignment: .leading, spacing: 6) {
-                Text("MKVToolNix is required (dev build only)").font(.headline)
-                Text("Install it with Homebrew, then click \u{201C}I installed it\u{201D}. The shipped .app bundles its own copy.")
+                Text("MKVToolNix is required").font(.headline)
+                Text("This app uses Homebrew\u{2019}s mkvtoolnix to read subtitle tracks from MKVs. Install it once, then click \u{201C}I installed it\u{201D}.")
                     .foregroundStyle(.secondary)
                 HStack {
                     Text("brew install mkvtoolnix")

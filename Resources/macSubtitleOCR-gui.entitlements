@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+        macSubtitleOCR-gui is intentionally NOT sandboxed. It needs to:
+          - Read user-chosen video / subtitle files from anywhere on disk
+          - Write the resulting .srt next to the source file (also anywhere)
+          - Spawn the bundled `macSubtitleOCR` binary and the user's
+            `mkvmerge` / `mkvextract` (typically /opt/homebrew/bin)
+        These are normal-user file-system and process capabilities, not
+        special privileges.
+    -->
+    <key>com.apple.security.app-sandbox</key>
+    <false/>
+</dict>
+</plist>
