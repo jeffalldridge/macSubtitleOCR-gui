@@ -28,7 +28,9 @@ public final class SubtitleJob {
     public var error: Error?
     @ObservationIgnored private var activeTask: Task<Void, Never>?
 
-    public init() {}
+    public init() {
+        self.options = Self.loadPersistedOptions() ?? .init()
+    }
 
     public var selectedTracks: [Track] {
         get { tracks.filter { selectedTrackIDs.contains($0.id) } }
@@ -39,15 +41,24 @@ public final class SubtitleJob {
         phase = .tracks
     }
 
-    public func selectDefaultTrack() {
-        guard let track = Track.bestDefault(from: tracks, preferredLanguages: options.languages) else {
-            selectedTrackIDs = []
+    /// Tick all tracks whose language matches the user's language preference,
+    /// ordered (default first, non-forced first, lower id first). Falls back to
+    /// `Track.bestDefault` when no track matches the preference.
+    public func selectDefaultTracks() {
+        let matches = Track.matching(tracks: tracks, preferredLanguages: options.languages)
+        if !matches.isEmpty {
+            selectedTrackIDs = Set(matches.map(\.id))
             return
         }
-        selectedTrackIDs = [track.id]
+        if let fallback = Track.bestDefault(from: tracks, preferredLanguages: options.languages) {
+            selectedTrackIDs = [fallback.id]
+        } else {
+            selectedTrackIDs = []
+        }
     }
 
     public func startOCR() {
+        Self.savePersistedOptions(options)
         activeTask?.cancel()
         activeTask = Task { [weak self] in
             guard let self else { return }
@@ -66,10 +77,27 @@ public final class SubtitleJob {
         input = nil
         tracks = []
         selectedTrackIDs = []
-        options = .init()
+        // Preserve the user's persisted preferences across resets so a fresh
+        // file inherits the language / invert / custom-words they last chose.
+        options = Self.loadPersistedOptions() ?? .init()
         phase = .idle
         logLines = []
         error = nil
+    }
+
+    // MARK: - Persistence
+
+    private static let optionsDefaultsKey = "macSubtitleOCRGUI.OCROptions.v1"
+
+    private static func loadPersistedOptions() -> OCRRunner.Options? {
+        guard let data = UserDefaults.standard.data(forKey: optionsDefaultsKey) else { return nil }
+        return try? JSONDecoder().decode(OCRRunner.Options.self, from: data)
+    }
+
+    private static func savePersistedOptions(_ options: OCRRunner.Options) {
+        if let data = try? JSONEncoder().encode(options) {
+            UserDefaults.standard.set(data, forKey: optionsDefaultsKey)
+        }
     }
 
     public func appendLog(_ line: String) {

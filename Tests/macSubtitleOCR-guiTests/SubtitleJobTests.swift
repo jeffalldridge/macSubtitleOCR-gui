@@ -28,17 +28,41 @@ import Foundation
         if case .idle = job.phase { } else { Issue.record("expected .idle") }
     }
 
-    @MainActor @Test func defaultSelectionPrefersLanguageAndDefaultTrack() {
+    @MainActor @Test func defaultSelectionTicksAllMatchingLanguages() {
         let job = SubtitleJob()
+        job.options.languages = "eng"
         job.tracks = [
             Track(id: 2, codec: .pgs, language: "spa", name: nil, isDefault: true),
             Track(id: 3, codec: .pgs, language: "eng", name: "English SDH"),
             Track(id: 4, codec: .pgs, language: "eng", name: "English", isDefault: true),
         ]
 
-        job.selectDefaultTrack()
+        job.selectDefaultTracks()
 
-        #expect(job.selectedTrackIDs == [4])
-        #expect(job.selectedTracks.map(\.id) == [4])
+        // Both English tracks selected, ordered: default first (id 4), then SDH (id 3).
+        #expect(job.selectedTrackIDs == [3, 4])
+        // Spanish track (id 2) is NOT selected even though it's marked default,
+        // because the user's language preference is English.
+        #expect(!job.selectedTrackIDs.contains(2))
+    }
+
+    @MainActor @Test func defaultSelectionFallsBackToSingleBestWhenNoLanguageMatches() {
+        let job = SubtitleJob()
+        job.options.languages = "fra"  // no French tracks
+        job.tracks = [
+            Track(id: 2, codec: .pgs, language: "eng", name: nil, isDefault: true),
+            Track(id: 3, codec: .pgs, language: "spa", name: nil),
+        ]
+
+        job.selectDefaultTracks()
+
+        #expect(job.selectedTrackIDs == [2])
+    }
+
+    @MainActor @Test func defaultSelectionEmptyForEmptyTrackList() {
+        let job = SubtitleJob()
+        job.tracks = []
+        job.selectDefaultTracks()
+        #expect(job.selectedTrackIDs.isEmpty)
     }
 }

@@ -54,22 +54,36 @@ public struct Track: Identifiable, Hashable, Sendable {
     public static func bestDefault(from tracks: [Track], preferredLanguages: String = "en") -> Track? {
         guard tracks.count > 1 else { return tracks.first }
 
+        let candidates = matching(tracks: tracks, preferredLanguages: preferredLanguages, fallback: tracks)
+        return candidates.first
+    }
+
+    /// Every track whose language is in `preferredLanguages`, sorted by
+    /// (default first, non-forced first, lower id first). Empty when no language
+    /// preference is set or none match — callers can fall back as they see fit.
+    public static func matching(tracks: [Track], preferredLanguages: String) -> [Track] {
+        matching(tracks: tracks, preferredLanguages: preferredLanguages, fallback: [])
+    }
+
+    private static func matching(tracks: [Track],
+                                 preferredLanguages: String,
+                                 fallback: [Track]) -> [Track] {
         let preferred = Set(preferredLanguages
             .split(separator: ",")
             .map { normalizeLanguageCode(String($0)) }
             .filter { !$0.isEmpty })
 
-        let languageMatches = tracks.filter { track in
+        let matches = preferred.isEmpty ? [] : tracks.filter { track in
             guard let language = track.language else { return false }
             return preferred.contains(Self.normalizeLanguageCode(language))
         }
-        let candidates = languageMatches.isEmpty ? tracks : languageMatches
+        let candidates = matches.isEmpty ? fallback : matches
 
         return candidates.sorted { lhs, rhs in
             if lhs.isDefault != rhs.isDefault { return lhs.isDefault && !rhs.isDefault }
             if lhs.isForced != rhs.isForced { return !lhs.isForced && rhs.isForced }
             return lhs.id < rhs.id
-        }.first
+        }
     }
 
     private static func normalizeLanguageCode(_ raw: String) -> String {

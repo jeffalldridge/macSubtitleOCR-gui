@@ -1,7 +1,7 @@
 import Foundation
 
 public actor OCRRunner {
-    public struct Options: Sendable, Equatable {
+    public struct Options: Sendable, Equatable, Codable {
         public var languages: String
         public var invert: Bool
         public var customWords: String?
