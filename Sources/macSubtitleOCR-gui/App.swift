@@ -8,8 +8,9 @@ struct macSubtitleOCRGUIApp: App {
         WindowGroup("macSubtitleOCR") {
             AppView()
                 .environment(job)
-                .frame(minWidth: 560, minHeight: 420)
+                .frame(minWidth: 640, minHeight: 480)
         }
         .windowResizability(.contentSize)
+        .defaultSize(width: 680, height: 520)
     }
 }

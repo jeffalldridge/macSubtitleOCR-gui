@@ -18,16 +18,26 @@ struct DropView: View {
             ZStack {
                 RoundedRectangle(cornerRadius: 16)
                     .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [8]))
-                    .foregroundStyle(isTargeted ? Color.accentColor : Color.secondary)
+                    .foregroundStyle(dropBorderColor)
+                    .background(.quaternary.opacity(isTargeted ? 0.4 : 0.15), in: RoundedRectangle(cornerRadius: 16))
                 VStack(spacing: 12) {
-                    Image(systemName: "arrow.down.doc")
+                    Image(systemName: isProbing ? "waveform.path.ecg" : "arrow.down.doc")
                         .font(.system(size: 48))
-                        .foregroundStyle(.secondary)
-                    Text("Drop a .mkv, .sup, .sub, or .idx file")
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(isProbing ? Color.accentColor : Color.secondary)
+                    Text(isProbing ? "Reading subtitle tracks..." : "Drop a video or subtitle file")
                         .font(.headline)
-                    Text("or").foregroundStyle(.secondary)
-                    Button("Choose file…") { openFilePicker() }
-                        .keyboardShortcut("o")
+                    Text(isProbing ? "This usually takes just a moment." : ".mkv, .mks, .sup, .sub, and .idx are supported.")
+                        .foregroundStyle(.secondary)
+                    if isProbing {
+                        ProgressView()
+                            .controlSize(.small)
+                            .padding(.top, 4)
+                    } else {
+                        Text("or").foregroundStyle(.secondary)
+                        Button("Choose File...") { openFilePicker() }
+                            .keyboardShortcut("o")
+                    }
                 }
                 .padding(40)
             }
@@ -37,8 +47,19 @@ struct DropView: View {
                 return true
             }
             .opacity(toolchain == nil ? 0.5 : 1.0)
-            .disabled(toolchain == nil)
+            .disabled(toolchain == nil || isProbing)
         }
+    }
+
+    private var isProbing: Bool {
+        if case .probing = job.phase { return true }
+        return false
+    }
+
+    private var dropBorderColor: Color {
+        if isTargeted { return .accentColor }
+        if isProbing { return .accentColor.opacity(0.7) }
+        return .secondary
     }
 
     private var missingToolchainBanner: some View {
@@ -110,6 +131,7 @@ struct DropView: View {
                 if tracks.isEmpty {
                     job.phase = .failed(message: "No PGS or VobSub tracks found in this file.")
                 } else {
+                    job.selectDefaultTrack()
                     job.advanceToTracks()
                 }
             }
