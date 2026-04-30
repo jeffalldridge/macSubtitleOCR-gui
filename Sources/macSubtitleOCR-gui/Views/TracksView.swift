@@ -3,6 +3,8 @@ import SwiftUI
 struct TracksView: View {
     @Environment(SubtitleJob.self) private var job
     @State private var showAdvanced = false
+    @State private var filterQuery = ""
+    @FocusState private var filterFocused: Bool
 
     var body: some View {
         @Bindable var job = job
@@ -21,33 +23,47 @@ struct TracksView: View {
                 Button("Cancel") { job.reset() }
             }
 
+            if job.tracks.count > 6 {
+                trackFilterField
+            }
+
             HStack(spacing: 16) {
-                Button("Select all") {
-                    job.selectedTrackIDs = Set(job.tracks.map(\.id))
+                Button("Select all\(filterQuery.isEmpty ? "" : " visible")") {
+                    let visibleIDs = filteredTracks.map(\.id)
+                    job.selectedTrackIDs.formUnion(visibleIDs)
                 }
-                .disabled(job.tracks.count <= 1)
+                .disabled(filteredTracks.count <= 1)
                 Button("Select none") {
                     job.selectedTrackIDs = []
                 }
                 .disabled(job.selectedTracks.isEmpty)
+                Button("Auto-select by language") {
+                    job.selectDefaultTracks()
+                }
+                .help("Tick all tracks whose language matches your language preference.")
+                .disabled(job.tracks.isEmpty)
                 Spacer()
-                Text("\(job.selectedTracks.count) of \(job.tracks.count) selected")
+                Text(selectionSummary)
                     .foregroundStyle(.secondary).font(.caption)
             }
 
             ScrollView {
                 VStack(spacing: 4) {
-                    ForEach(job.tracks) { track in
-                        TrackCheckRow(
-                            track: track,
-                            isOn: Binding(
-                                get: { job.selectedTrackIDs.contains(track.id) },
-                                set: { newValue in
-                                    if newValue { job.selectedTrackIDs.insert(track.id) }
-                                    else        { job.selectedTrackIDs.remove(track.id) }
-                                }
+                    if filteredTracks.isEmpty {
+                        emptyFilterState
+                    } else {
+                        ForEach(filteredTracks) { track in
+                            TrackCheckRow(
+                                track: track,
+                                isOn: Binding(
+                                    get: { job.selectedTrackIDs.contains(track.id) },
+                                    set: { newValue in
+                                        if newValue { job.selectedTrackIDs.insert(track.id) }
+                                        else        { job.selectedTrackIDs.remove(track.id) }
+                                    }
+                                )
                             )
-                        )
+                        }
                     }
                 }
             }
@@ -92,6 +108,64 @@ struct TracksView: View {
         return "Run OCR (\(n) tracks)"
     }
 
+    private var filteredTracks: [Track] {
+        let q = filterQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !q.isEmpty else { return job.tracks }
+        return job.tracks.filter { track in
+            track.displayTitle.lowercased().contains(q) ||
+            track.displaySubtitle.lowercased().contains(q) ||
+            (track.language?.lowercased().contains(q) ?? false) ||
+            (track.name?.lowercased().contains(q) ?? false)
+        }
+    }
+
+    private var selectionSummary: String {
+        let selected = job.selectedTracks.count
+        let total = job.tracks.count
+        let visible = filteredTracks.count
+        if filterQuery.isEmpty || visible == total {
+            return "\(selected) of \(total) selected"
+        }
+        return "\(selected) of \(total) selected — \(visible) shown"
+    }
+
+    private var trackFilterField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField("Filter by language or name (e.g. \"sdh\", \"jpn\", \"commentary\")",
+                      text: $filterQuery)
+                .textFieldStyle(.plain)
+                .focused($filterFocused)
+            if !filterQuery.isEmpty {
+                Button {
+                    filterQuery = ""
+                    filterFocused = true
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var emptyFilterState: some View {
+        VStack(spacing: 6) {
+            Image(systemName: "line.3.horizontal.decrease.circle")
+                .font(.title2)
+                .foregroundStyle(.secondary)
+            Text("No tracks match \u{201C}\(filterQuery)\u{201D}")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            Button("Clear filter") { filterQuery = "" }
+                .buttonStyle(.borderless)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+    }
 }
 
 private struct TrackCheckRow: View {
