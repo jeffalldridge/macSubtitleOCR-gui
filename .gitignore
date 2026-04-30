@@ -1,0 +1,6 @@
+.build/
+.swiftpm/
+build/
+*.xcodeproj
+.DS_Store
+Sources/macSubtitleOCR-gui/Resources/macSubtitleOCR
