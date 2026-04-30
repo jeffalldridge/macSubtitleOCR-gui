@@ -7,11 +7,13 @@
   <key>CFBundleDisplayName</key>
   <string>macSubtitleOCR</string>
   <key>CFBundleIdentifier</key>
-  <string>com.jeffalldridge.macSubtitleOCR-gui</string>
+  <string>com.tentstudios.macSubtitleOCR-gui</string>
   <key>CFBundleVersion</key>
   <string>0.1.0</string>
   <key>CFBundleShortVersionString</key>
   <string>0.1.0</string>
+  <key>NSHumanReadableCopyright</key>
+  <string>© 2026 Jeff Alldridge / Tent Studios, LLC. macSubtitleOCR © Ethan Dye, MIT License.</string>
   <key>CFBundleExecutable</key>
   <string>macSubtitleOCR-gui</string>
   <key>CFBundlePackageType</key>

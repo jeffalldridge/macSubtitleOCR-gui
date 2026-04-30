@@ -1,9 +1,13 @@
 # macSubtitleOCR-gui
 
 A polished macOS SwiftUI front-end for [macSubtitleOCR](https://github.com/ecdye/macSubtitleOCR).
-Drop a `.mkv`, `.sup`, `.sub`, or `.idx` file, pick a single PGS or VobSub track,
-and get a clean `.srt` next to your source file. Designed for muxing into MP4
-soft-subs with [Subler](https://subler.org).
+Drop a `.mkv`, `.sup`, `.sub`, or `.idx` file, pick one or more PGS / VobSub
+tracks, and get clean `.srt` files next to your source. Designed for muxing
+into MP4 soft-subs with [Subler](https://subler.org).
+
+By Jeff Alldridge / [Tent Studios, LLC](https://tentstudios.com). The
+underlying OCR engine is [macSubtitleOCR](https://github.com/ecdye/macSubtitleOCR)
+by Ethan Dye, MIT-licensed.
 
 ## Why
 
@@ -83,4 +87,4 @@ and [docs/superpowers/plans/](docs/superpowers/plans/) for the implementation pl
 
 ## License
 
-Same license as upstream macSubtitleOCR (MIT).
+MIT, same as upstream macSubtitleOCR. © 2026 Jeff Alldridge / Tent Studios, LLC.
