@@ -79,13 +79,13 @@ jobs:
               --issuer "$NOTARY_ISSUER_ID"
           rm -f "$KEY_PATH"
 
-      - name: Build, sign, notarize, package
+      - name: Build, sign, notarize, package, notarize-dmg
         env:
           DEV_ID: ${{ secrets.DEV_ID }}
         run: |
           make build
           make notarize
-          make dmg
+          make notarize-dmg
 
       - name: Compute checksums
         run: |

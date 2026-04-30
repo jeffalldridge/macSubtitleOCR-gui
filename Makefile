@@ -1,4 +1,4 @@
-.PHONY: build run app dmg notarize release update clean test
+.PHONY: build run app dmg notarize notarize-dmg release update clean test
 
 SWIFT       ?= swift
 VENDOR      := Vendor/macSubtitleOCR
@@ -58,7 +58,27 @@ dmg: app
 	               -ov -format UDZO \
 	               "$(DMG_PATH)"
 	@rm -rf build/dmg-staging
+	@if [[ -n "$$DEV_ID" ]]; then \
+	    echo "==> Signing $(DMG_PATH) with Developer ID"; \
+	    codesign --force --sign "$$DEV_ID" --timestamp "$(DMG_PATH)"; \
+	fi
 	@echo "==> Built $(DMG_PATH) ($$(du -sh "$(DMG_PATH)" | awk '{print $$1}'))"
+
+# Notarize and staple the .dmg itself (separate from the inner .app which is
+# already notarized by `make notarize`). Gives end users a totally warning-free
+# download — even macOS Sequoia's "verify before opening" sheet is bypassed.
+notarize-dmg: dmg
+	@if [[ -z "$$DEV_ID" ]]; then \
+	    echo "Error: DEV_ID must be set." >&2; exit 1; \
+	fi
+	@echo "==> Submitting $(DMG_PATH) to Apple notary service"
+	xcrun notarytool submit "$(DMG_PATH)" \
+	    --keychain-profile "$(NOTARY_PROFILE)" \
+	    --wait
+	@echo "==> Stapling notarization ticket to DMG"
+	xcrun stapler staple "$(DMG_PATH)"
+	xcrun stapler validate "$(DMG_PATH)"
+	@echo "==> Notarized $(DMG_PATH)"
 
 # ---------------------------------------------------------------------------
 # Notarization — submits the .app to Apple's notarization service, waits for
@@ -104,8 +124,8 @@ notarize: app
 # ---------------------------------------------------------------------------
 
 release: clean notarize
-	$(MAKE) dmg
-	@echo "==> Release artifact: $(DMG_PATH)"
+	$(MAKE) notarize-dmg
+	@echo "==> Release artifact: $(DMG_PATH) (signed + notarized + stapled)"
 	@echo "Tag with:  git tag -a v$(VERSION) -m 'v$(VERSION)' && git push --tags"
 
 # ---------------------------------------------------------------------------
