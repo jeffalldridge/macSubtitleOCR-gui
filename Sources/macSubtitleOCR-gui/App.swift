@@ -2,10 +2,14 @@ import SwiftUI
 
 @main
 struct macSubtitleOCRGUIApp: App {
+    @State private var job = SubtitleJob()
+
     var body: some Scene {
-        WindowGroup {
-            Text("macSubtitleOCR-gui — under construction")
-                .frame(minWidth: 480, minHeight: 320)
+        WindowGroup("macSubtitleOCR") {
+            AppView()
+                .environment(job)
+                .frame(minWidth: 560, minHeight: 420)
         }
+        .windowResizability(.contentSize)
     }
 }
