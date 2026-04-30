@@ -54,6 +54,16 @@ cp "$MKVMERGE_REAL"   "$APP/Contents/Resources/mkvmerge"
 cp "$MKVEXTRACT_REAL" "$APP/Contents/Resources/mkvextract"
 cp "$INFO_PLIST"   "$APP/Contents/Info.plist"
 
+# --- Build app icon ---
+SVG_SRC="./Resources/icon.icon/Assets/captions.bubble 2.svg"
+ICNS_DST="$APP/Contents/Resources/icon.icns"
+echo "==> Building icon.icns from SVG"
+swift Scripts/build-icns.swift "$SVG_SRC" "$ICNS_DST"
+if [[ ! -s "$ICNS_DST" ]]; then
+    echo "Error: icon.icns was not produced or is empty." >&2
+    exit 1
+fi
+
 chmod +x "$APP/Contents/MacOS/${EXEC_NAME}"
 chmod +x "$APP/Contents/Resources/macSubtitleOCR"
 chmod +x "$APP/Contents/Resources/mkvmerge"
