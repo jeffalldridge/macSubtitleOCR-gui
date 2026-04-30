@@ -1,0 +1,105 @@
+name: Release
+
+# Triggered when you push a tag like `v0.1.0`. Builds a notarized, stapled
+# .app, packages it as a .dmg, and uploads to a new GitHub Release.
+#
+# Required GitHub Repository Secrets (Settings → Secrets and variables → Actions):
+#
+#   MACOS_CERT_P12          base64-encoded Developer ID Application .p12
+#                           (export from Keychain Access; encode with
+#                           `base64 -i cert.p12 | pbcopy`)
+#   MACOS_CERT_PASSWORD     password set when exporting the .p12
+#   KEYCHAIN_PASSWORD       any random string (used for the runner's
+#                           ephemeral keychain)
+#   DEV_ID                  e.g. "Developer ID Application: Jeff Alldridge (TEAMID)"
+#   NOTARY_KEY              base64-encoded App Store Connect API .p8
+#   NOTARY_KEY_ID           10-char Key ID from App Store Connect
+#   NOTARY_ISSUER_ID        UUID Issuer ID from App Store Connect
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write   # needed to create releases
+
+jobs:
+  release:
+    name: Build, notarize, and publish
+    runs-on: macos-14
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Show toolchain
+        run: |
+          swift --version
+          xcodebuild -version
+
+      - name: Read tag version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Import Developer ID certificate
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+          CERT_PATH="$RUNNER_TEMP/cert.p12"
+          echo -n "$MACOS_CERT_P12" | base64 --decode -o "$CERT_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$MACOS_CERT_PASSWORD" \
+              -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: \
+              -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" >/dev/null
+          security list-keychain -d user -s "$KEYCHAIN_PATH" login.keychain
+          rm -f "$CERT_PATH"
+
+      - name: Save notarytool credentials
+        env:
+          NOTARY_KEY: ${{ secrets.NOTARY_KEY }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          KEY_PATH="$RUNNER_TEMP/AuthKey.p8"
+          echo -n "$NOTARY_KEY" | base64 --decode -o "$KEY_PATH"
+          xcrun notarytool store-credentials "macSubtitleOCR-gui" \
+              --key "$KEY_PATH" \
+              --key-id "$NOTARY_KEY_ID" \
+              --issuer "$NOTARY_ISSUER_ID"
+          rm -f "$KEY_PATH"
+
+      - name: Build, sign, notarize, package
+        env:
+          DEV_ID: ${{ secrets.DEV_ID }}
+        run: |
+          make build
+          make notarize
+          make dmg
+
+      - name: Compute checksums
+        run: |
+          cd build
+          shasum -a 256 macSubtitleOCR-gui.dmg > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          name: macSubtitleOCR-gui ${{ github.ref_name }}
+          files: |
+            build/macSubtitleOCR-gui.dmg
+            build/SHA256SUMS.txt

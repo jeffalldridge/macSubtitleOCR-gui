@@ -1,0 +1,72 @@
+name: Bug report
+description: Something isn't working the way you expected.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a report. The more specific you can be, the faster
+        this gets fixed.
+
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      description: e.g. "Sonoma 14.5" or "Sequoia 15.0".
+      placeholder: macOS 14.5
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: macSubtitleOCR-gui version
+      description: From the menu bar → About, or in the .dmg filename.
+      placeholder: v0.1.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: hardware
+    attributes:
+      label: Hardware
+      options:
+        - Apple Silicon (M-series)
+        - Intel
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: |
+        Concrete steps. If a specific file triggers it, run
+        `mkvmerge -J path/to/file.mkv > tracks.json` and attach `tracks.json`
+        (it's metadata only, no video / audio data).
+      placeholder: |
+        1. Drop tracks.json onto the window
+        2. Tick "English (SDH)"
+        3. Click Run OCR
+        4. App freezes at "Extracting"
+    validations:
+      required: true
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Log panel contents
+      description: |
+        From the Run / Done screen → "Log" disclosure → copy and paste here.
+      render: shell
+    validations:
+      required: false

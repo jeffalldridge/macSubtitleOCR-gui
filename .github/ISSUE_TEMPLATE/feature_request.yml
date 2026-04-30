@@ -1,0 +1,43 @@
+name: Feature request
+description: Suggest something the app could do that it doesn't yet.
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use cases first, please. "I want a button that does X" is harder to
+        triage than "I'm trying to do Y and the current flow makes it
+        clunky because Z."
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: What are you trying to accomplish?
+      description: The end goal, in your words.
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-flow
+    attributes:
+      label: What's the current flow / workaround?
+      description: How are you doing it today, if at all?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would help
+      description: Describe the change you'd like, even at a sketch level.
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+      description: Optional. Other approaches you thought about.
+    validations:
+      required: false
