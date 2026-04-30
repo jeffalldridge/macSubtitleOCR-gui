@@ -56,4 +56,33 @@ import Foundation
         #expect(FileManager.default.fileExists(atPath: final.path))
         #expect(final.lastPathComponent == "Film.en.srt")
     }
+
+    @Test func includesSanitizedTrackNameWhenProvided() {
+        let input = URL(fileURLWithPath: "/x/Movie.mkv")
+        let url = SRTFinalizer.targetURL(forInput: input, language: "eng",
+                                         trackName: "English SDH", existingFiles: [])
+        #expect(url.lastPathComponent == "Movie.eng.english-sdh.srt")
+    }
+
+    @Test func sanitizerLowercasesAndDashesNonAlnum() {
+        #expect(SRTFinalizer.sanitizeForFilename("English SDH") == "english-sdh")
+        #expect(SRTFinalizer.sanitizeForFilename("Director's Commentary") == "director-s-commentary")
+        #expect(SRTFinalizer.sanitizeForFilename("  --weird-- ") == "weird")
+        #expect(SRTFinalizer.sanitizeForFilename("") == "")
+    }
+
+    @Test func emptyTrackNameOmitsSuffix() {
+        let input = URL(fileURLWithPath: "/x/Movie.mkv")
+        let url = SRTFinalizer.targetURL(forInput: input, language: "eng",
+                                         trackName: "", existingFiles: [])
+        #expect(url.lastPathComponent == "Movie.eng.srt")
+    }
+
+    @Test func conflictSuffixingWithTrackName() {
+        let input = URL(fileURLWithPath: "/x/Movie.mkv")
+        let existing: Set<URL> = [URL(fileURLWithPath: "/x/Movie.eng.commentary.srt")]
+        let url = SRTFinalizer.targetURL(forInput: input, language: "eng",
+                                         trackName: "Commentary", existingFiles: existing)
+        #expect(url.lastPathComponent == "Movie.eng.commentary-1.srt")
+    }
 }

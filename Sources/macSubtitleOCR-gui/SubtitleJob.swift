@@ -8,8 +8,8 @@ public final class SubtitleJob {
         case idle
         case probing
         case tracks
-        case running(stage: Stage)
-        case done(output: URL)
+        case running(stage: Stage, currentTrackIndex: Int, totalTracks: Int)
+        case done(outputs: [URL])
         case failed(message: String)
 
         public enum Stage: Equatable {
@@ -21,7 +21,7 @@ public final class SubtitleJob {
 
     public var input: URL?
     public var tracks: [Track] = []
-    public var selectedTrack: Track?
+    public var selectedTracks: Set<Track> = []
     public var options: OCRRunner.Options = .init()
     public var phase: Phase = .idle
     public var logLines: [String] = []
@@ -36,7 +36,7 @@ public final class SubtitleJob {
     public func reset() {
         input = nil
         tracks = []
-        selectedTrack = nil
+        selectedTracks = []
         options = .init()
         phase = .idle
         logLines = []

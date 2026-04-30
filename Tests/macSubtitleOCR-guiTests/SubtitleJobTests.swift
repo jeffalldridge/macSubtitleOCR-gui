@@ -19,10 +19,12 @@ import Foundation
     @MainActor @Test func resetClearsState() {
         let job = SubtitleJob()
         job.input = URL(fileURLWithPath: "/tmp/x.sup")
+        job.selectedTracks = [Track(id: 0, codec: .pgs, language: nil, name: nil)]
         job.advanceToTracks()
         job.reset()
         #expect(job.input == nil)
         #expect(job.tracks.isEmpty)
+        #expect(job.selectedTracks.isEmpty)
         if case .idle = job.phase { } else { Issue.record("expected .idle") }
     }
 }

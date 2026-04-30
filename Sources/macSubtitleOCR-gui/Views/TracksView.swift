@@ -1,4 +1,3 @@
-// Sources/macSubtitleOCR-gui/Views/TracksView.swift
 import SwiftUI
 
 struct TracksView: View {
@@ -11,7 +10,7 @@ struct TracksView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading) {
-                    Text("Choose a subtitle track").font(.title2).bold()
+                    Text("Choose subtitle tracks").font(.title2).bold()
                     if let url = job.input {
                         Text(url.lastPathComponent)
                             .foregroundStyle(.secondary)
@@ -22,20 +21,38 @@ struct TracksView: View {
                 Button("Cancel") { job.reset() }
             }
 
-            if job.tracks.count > 1 {
-                List(selection: $job.selectedTrack) {
+            HStack(spacing: 16) {
+                Button("Select all") {
+                    job.selectedTracks = Set(job.tracks)
+                }
+                .disabled(job.tracks.count <= 1)
+                Button("Select none") {
+                    job.selectedTracks = []
+                }
+                .disabled(job.selectedTracks.isEmpty)
+                Spacer()
+                Text("\(job.selectedTracks.count) of \(job.tracks.count) selected")
+                    .foregroundStyle(.secondary).font(.caption)
+            }
+
+            ScrollView {
+                VStack(spacing: 4) {
                     ForEach(job.tracks) { track in
-                        TrackRow(track: track)
-                            .tag(Optional(track))
+                        TrackCheckRow(
+                            track: track,
+                            isOn: Binding(
+                                get: { job.selectedTracks.contains(track) },
+                                set: { newValue in
+                                    if newValue { job.selectedTracks.insert(track) }
+                                    else        { job.selectedTracks.remove(track) }
+                                }
+                            )
+                        )
                     }
                 }
-                .frame(minHeight: 160)
-            } else if let only = job.tracks.first {
-                TrackRow(track: only)
-                    .padding(8)
-                    .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
-                    .onAppear { job.selectedTrack = only }
             }
+            .frame(minHeight: 120, maxHeight: 280)
+            .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
 
             DisclosureGroup("OCR options", isExpanded: $showAdvanced) {
                 VStack(alignment: .leading, spacing: 10) {
@@ -62,11 +79,17 @@ struct TracksView: View {
 
             HStack {
                 Spacer()
-                Button("Run OCR") { startRun() }
+                Button(runButtonLabel) { startRun() }
                     .keyboardShortcut(.defaultAction)
-                    .disabled(job.selectedTrack == nil)
+                    .disabled(job.selectedTracks.isEmpty)
             }
         }
+    }
+
+    private var runButtonLabel: String {
+        let n = job.selectedTracks.count
+        if n <= 1 { return "Run OCR" }
+        return "Run OCR (\(n) tracks)"
     }
 
     private func startRun() {
@@ -74,24 +97,30 @@ struct TracksView: View {
     }
 }
 
-private struct TrackRow: View {
+private struct TrackCheckRow: View {
     let track: Track
+    @Binding var isOn: Bool
+
     var body: some View {
-        HStack {
-            Image(systemName: "captions.bubble").foregroundStyle(.secondary)
-            VStack(alignment: .leading) {
-                Text("Track \(track.id) — \(track.codec.displayName)").font(.body)
-                if let name = track.name, !name.isEmpty {
-                    Text(name).foregroundStyle(.secondary).font(.caption)
+        Toggle(isOn: $isOn) {
+            HStack {
+                Image(systemName: "captions.bubble").foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Track \(track.id) — \(track.codec.displayName)")
+                    if let name = track.name, !name.isEmpty {
+                        Text(name).foregroundStyle(.secondary).font(.caption)
+                    }
+                }
+                Spacer()
+                if let lang = track.language {
+                    Text(lang.uppercased())
+                        .font(.system(.caption, design: .monospaced))
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Color.secondary.opacity(0.2), in: Capsule())
                 }
             }
-            Spacer()
-            if let lang = track.language {
-                Text(lang.uppercased())
-                    .font(.system(.caption, design: .monospaced))
-                    .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(Color.secondary.opacity(0.15), in: Capsule())
-            }
         }
+        .toggleStyle(.checkbox)
+        .padding(.vertical, 4).padding(.horizontal, 10)
     }
 }

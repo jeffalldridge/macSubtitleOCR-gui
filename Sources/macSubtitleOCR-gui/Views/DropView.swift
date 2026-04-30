@@ -110,7 +110,6 @@ struct DropView: View {
                 if tracks.isEmpty {
                     job.phase = .failed(message: "No PGS or VobSub tracks found in this file.")
                 } else {
-                    job.selectedTrack = tracks.first
                     job.advanceToTracks()
                 }
             }

@@ -40,12 +40,15 @@ struct RunView: View {
     }
 
     private var stageLabel: String {
-        if case .running(let stage) = job.phase {
+        if case .running(let stage, let i, let n) = job.phase {
+            let stageName: String
             switch stage {
-            case .extracting: return "Extracting subtitle track…"
-            case .ocr: return "Running OCR…"
-            case .finalizing: return "Saving SRT…"
+            case .extracting: stageName = "Extracting subtitle track…"
+            case .ocr:        stageName = "Running OCR…"
+            case .finalizing: stageName = "Saving SRT…"
             }
+            if n > 1 { return "Track \(i + 1) of \(n) — \(stageName)" }
+            return stageName
         }
         return "Working…"
     }
