@@ -25,6 +25,8 @@ enum OCRPipeline {
         var outputs: [URL] = []
 
         for (index, track) in orderedTracks.enumerated() {
+            guard !Task.isCancelled else { return }
+
             // Stage 1: Extract (only for MKV; .sup/.sub passes through)
             var ocrInput = input
             if isContainer {
@@ -33,11 +35,17 @@ enum OCRPipeline {
                                      totalTracks: orderedTracks.count)
                 do {
                     let extractor = MKVToolNixExtractor(mkvextractPath: toolchain.mkvextract)
-                    ocrInput = try await extractor.extract(input: input, trackID: track.id)
+                    ocrInput = try await extractor.extract(input: input, track: track)
                 } catch {
+                    if error is CancellationError { return }
                     job.phase = .failed(message: "Track \(track.id): \(error.localizedDescription)")
                     return
                 }
+            }
+
+            guard !Task.isCancelled else {
+                if ocrInput != input { try? FileManager.default.removeItem(at: ocrInput.deletingLastPathComponent()) }
+                return
             }
 
             // Stage 2: OCR
@@ -53,10 +61,16 @@ enum OCRPipeline {
                 case .finished(let out):
                     producedDir = out.outputDir
                 case .failed(let stderr, let code):
+                    if Task.isCancelled { return }
                     job.appendLog(stderr)
                     job.phase = .failed(message: "Track \(track.id): macSubtitleOCR exited with code \(code).")
                     return
                 }
+            }
+
+            guard !Task.isCancelled else {
+                if ocrInput != input { try? FileManager.default.removeItem(at: ocrInput.deletingLastPathComponent()) }
+                return
             }
 
             guard let dir = producedDir else {
@@ -77,7 +91,7 @@ enum OCRPipeline {
                     trackName: track.name
                 )
                 outputs.append(finalURL)
-                if ocrInput != input { try? FileManager.default.removeItem(at: ocrInput) }
+                if ocrInput != input { try? FileManager.default.removeItem(at: ocrInput.deletingLastPathComponent()) }
                 try? FileManager.default.removeItem(at: dir)
             } catch {
                 job.phase = .failed(message: "Track \(track.id): \(error.localizedDescription)")

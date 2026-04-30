@@ -23,11 +23,11 @@ struct TracksView: View {
 
             HStack(spacing: 16) {
                 Button("Select all") {
-                    job.selectedTracks = Set(job.tracks)
+                    job.selectedTrackIDs = Set(job.tracks.map(\.id))
                 }
                 .disabled(job.tracks.count <= 1)
                 Button("Select none") {
-                    job.selectedTracks = []
+                    job.selectedTrackIDs = []
                 }
                 .disabled(job.selectedTracks.isEmpty)
                 Spacer()
@@ -41,10 +41,10 @@ struct TracksView: View {
                         TrackCheckRow(
                             track: track,
                             isOn: Binding(
-                                get: { job.selectedTracks.contains(track) },
+                                get: { job.selectedTrackIDs.contains(track.id) },
                                 set: { newValue in
-                                    if newValue { job.selectedTracks.insert(track) }
-                                    else        { job.selectedTracks.remove(track) }
+                                    if newValue { job.selectedTrackIDs.insert(track.id) }
+                                    else        { job.selectedTrackIDs.remove(track.id) }
                                 }
                             )
                         )
@@ -79,7 +79,7 @@ struct TracksView: View {
 
             HStack {
                 Spacer()
-                Button(runButtonLabel) { startRun() }
+                Button(runButtonLabel) { job.startOCR() }
                     .keyboardShortcut(.defaultAction)
                     .disabled(job.selectedTracks.isEmpty)
             }
@@ -92,9 +92,6 @@ struct TracksView: View {
         return "Run OCR (\(n) tracks)"
     }
 
-    private func startRun() {
-        Task { await OCRPipeline.run(job: job) }
-    }
 }
 
 private struct TrackCheckRow: View {
@@ -104,23 +101,45 @@ private struct TrackCheckRow: View {
     var body: some View {
         Toggle(isOn: $isOn) {
             HStack {
-                Image(systemName: "captions.bubble").foregroundStyle(.secondary)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Track \(track.id) — \(track.codec.displayName)")
-                    if let name = track.name, !name.isEmpty {
-                        Text(name).foregroundStyle(.secondary).font(.caption)
-                    }
+                Image(systemName: track.isForced ? "captions.bubble.fill" : "captions.bubble")
+                    .foregroundStyle(track.isForced ? Color.accentColor : Color.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(track.displayTitle)
+                    Text(track.displaySubtitle)
+                        .foregroundStyle(.secondary)
+                        .font(.caption)
                 }
                 Spacer()
-                if let lang = track.language {
-                    Text(lang.uppercased())
-                        .font(.system(.caption, design: .monospaced))
-                        .padding(.horizontal, 6).padding(.vertical, 2)
-                        .background(Color.secondary.opacity(0.2), in: Capsule())
+                if track.isDefault {
+                    Badge("Default")
+                }
+                if track.isForced {
+                    Badge("Forced")
+                }
+                if let lang = track.languageBadge {
+                    Badge(lang, monospaced: true)
                 }
             }
         }
         .toggleStyle(.checkbox)
         .padding(.vertical, 4).padding(.horizontal, 10)
+    }
+}
+
+private struct Badge: View {
+    let text: String
+    let monospaced: Bool
+
+    init(_ text: String, monospaced: Bool = false) {
+        self.text = text
+        self.monospaced = monospaced
+    }
+
+    var body: some View {
+        Text(text)
+            .font(monospaced ? .system(.caption, design: .monospaced) : .caption)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2)
+            .background(Color.secondary.opacity(0.16), in: Capsule())
     }
 }

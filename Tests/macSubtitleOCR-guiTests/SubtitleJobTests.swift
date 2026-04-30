@@ -27,4 +27,18 @@ import Foundation
         #expect(job.selectedTracks.isEmpty)
         if case .idle = job.phase { } else { Issue.record("expected .idle") }
     }
+
+    @MainActor @Test func defaultSelectionPrefersLanguageAndDefaultTrack() {
+        let job = SubtitleJob()
+        job.tracks = [
+            Track(id: 2, codec: .pgs, language: "spa", name: nil, isDefault: true),
+            Track(id: 3, codec: .pgs, language: "eng", name: "English SDH"),
+            Track(id: 4, codec: .pgs, language: "eng", name: "English", isDefault: true),
+        ]
+
+        job.selectDefaultTrack()
+
+        #expect(job.selectedTrackIDs == [4])
+        #expect(job.selectedTracks.map(\.id) == [4])
+    }
 }

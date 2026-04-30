@@ -11,8 +11,18 @@ import Foundation
     }
 
     @Test func tempOutputURLEndsInSup() {
-        let url = MKVToolNixExtractor.makeTempOutputURL(trackID: 3)
+        let url = MKVToolNixExtractor.makeTempOutputURL(
+            track: Track(id: 3, codec: .pgs, language: nil, name: nil)
+        )
         #expect(url.pathExtension == "sup")
         #expect(url.lastPathComponent.contains("track-3"))
+    }
+
+    @Test func tempOutputURLUsesIdxForVobSub() {
+        let url = MKVToolNixExtractor.makeTempOutputURL(
+            track: Track(id: 4, codec: .vobsub, language: "eng", name: nil)
+        )
+        #expect(url.pathExtension == "idx")
+        #expect(url.lastPathComponent.contains("track-4"))
     }
 }

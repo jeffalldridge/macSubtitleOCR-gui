@@ -37,6 +37,17 @@ import Foundation
         #expect(tracks.isEmpty)
     }
 
+    @Test func parsesDefaultAndForcedFlags() throws {
+        let json = """
+        {"tracks":[{"id":7,"type":"subtitles","codec":"SubRip/SRT","properties":{"language":"eng"}},{"id":8,"type":"subtitles","codec":"HDMV PGS","properties":{"language":"eng","default_track":true,"forced_track":true}}]}
+        """
+        let tracks = try TrackProber.parseMkvmergeJSON(Data(json.utf8))
+        #expect(tracks.count == 1)
+        #expect(tracks[0].id == 8)
+        #expect(tracks[0].isDefault)
+        #expect(tracks[0].isForced)
+    }
+
     @Test func syntheticTrackForSupInput() {
         let url = URL(fileURLWithPath: "/tmp/movie.sup")
         let tracks = TrackProber.syntheticTracks(for: url)

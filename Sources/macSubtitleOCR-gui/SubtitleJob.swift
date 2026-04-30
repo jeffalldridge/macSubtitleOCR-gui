@@ -21,22 +21,51 @@ public final class SubtitleJob {
 
     public var input: URL?
     public var tracks: [Track] = []
-    public var selectedTracks: Set<Track> = []
+    public var selectedTrackIDs: Set<Track.ID> = []
     public var options: OCRRunner.Options = .init()
     public var phase: Phase = .idle
     public var logLines: [String] = []
     public var error: Error?
+    @ObservationIgnored private var activeTask: Task<Void, Never>?
 
     public init() {}
+
+    public var selectedTracks: [Track] {
+        get { tracks.filter { selectedTrackIDs.contains($0.id) } }
+        set { selectedTrackIDs = Set(newValue.map(\.id)) }
+    }
 
     public func advanceToTracks() {
         phase = .tracks
     }
 
+    public func selectDefaultTrack() {
+        guard let track = Track.bestDefault(from: tracks, preferredLanguages: options.languages) else {
+            selectedTrackIDs = []
+            return
+        }
+        selectedTrackIDs = [track.id]
+    }
+
+    public func startOCR() {
+        activeTask?.cancel()
+        activeTask = Task { [weak self] in
+            guard let self else { return }
+            await OCRPipeline.run(job: self)
+            activeTask = nil
+        }
+    }
+
+    public func cancelRunningWork() {
+        activeTask?.cancel()
+        activeTask = nil
+    }
+
     public func reset() {
+        cancelRunningWork()
         input = nil
         tracks = []
-        selectedTracks = []
+        selectedTrackIDs = []
         options = .init()
         phase = .idle
         logLines = []

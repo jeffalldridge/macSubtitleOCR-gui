@@ -59,6 +59,8 @@ public struct TrackProber {
         struct Properties: Decodable {
             let language: String?
             let track_name: String?
+            let default_track: Bool?
+            let forced_track: Bool?
         }
 
         do {
@@ -72,7 +74,14 @@ public struct TrackProber {
                 default: return nil
                 }
                 let lang = entry.properties?.language.flatMap { $0 == "und" ? nil : $0 }
-                return Track(id: entry.id, codec: codec, language: lang, name: entry.properties?.track_name)
+                return Track(
+                    id: entry.id,
+                    codec: codec,
+                    language: lang,
+                    name: entry.properties?.track_name,
+                    isDefault: entry.properties?.default_track ?? false,
+                    isForced: entry.properties?.forced_track ?? false
+                )
             }
         } catch {
             throw TrackProberError.malformedJSON(underlying: error)
@@ -80,25 +89,16 @@ public struct TrackProber {
     }
 
     private func runMkvmerge(_ input: URL) async throws -> Data {
-        let process = Process()
-        process.executableURL = mkvmergePath
-        process.arguments = ["-J", input.path]
-        let stdout = Pipe()
-        let stderr = Pipe()
-        process.standardOutput = stdout
-        process.standardError = stderr
-
         do {
-            try process.run()
+            let result = try await ProcessRunner.run(executable: mkvmergePath, arguments: ["-J", input.path])
+            if result.terminationStatus != 0 {
+                let errStr = String(data: result.stderr, encoding: .utf8) ?? ""
+                throw TrackProberError.mkvmergeFailed(stderr: errStr, code: result.terminationStatus)
+            }
+            return result.stdout
         } catch {
+            if error is TrackProberError { throw error }
             throw TrackProberError.mkvmergeNotFound
         }
-        process.waitUntilExit()
-        let outData = stdout.fileHandleForReading.readDataToEndOfFile()
-        if process.terminationStatus != 0 {
-            let errStr = String(data: stderr.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-            throw TrackProberError.mkvmergeFailed(stderr: errStr, code: process.terminationStatus)
-        }
-        return outData
     }
 }

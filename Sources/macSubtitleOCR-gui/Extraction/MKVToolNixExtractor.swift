@@ -2,10 +2,12 @@ import Foundation
 
 public enum MKVToolNixExtractorError: Error, LocalizedError {
     case mkvextractFailed(stderr: String, code: Int32)
+    case mkvextractNotFound
 
     public var errorDescription: String? {
         switch self {
         case .mkvextractFailed(let s, let c): "mkvextract exited with code \(c): \(s)"
+        case .mkvextractNotFound: "mkvextract not found. Install MKVToolNix: brew install mkvtoolnix"
         }
     }
 }
@@ -17,21 +19,21 @@ public struct MKVToolNixExtractor: TrackExtractor {
         self.mkvextractPath = mkvextractPath
     }
 
-    public func extract(input: URL, trackID: Int) async throws -> URL {
-        let output = Self.makeTempOutputURL(trackID: trackID)
-        let process = Process()
-        process.executableURL = mkvextractPath
-        process.arguments = Self.arguments(input: input, trackID: trackID, output: output)
-        let stderr = Pipe()
-        process.standardError = stderr
-        process.standardOutput = Pipe()  // discard
-
-        try process.run()
-        process.waitUntilExit()
-
-        if process.terminationStatus != 0 {
-            let errStr = String(data: stderr.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-            throw MKVToolNixExtractorError.mkvextractFailed(stderr: errStr, code: process.terminationStatus)
+    public func extract(input: URL, track: Track) async throws -> URL {
+        let output = Self.makeTempOutputURL(track: track)
+        do {
+            let result = try await ProcessRunner.run(
+                executable: mkvextractPath,
+                arguments: Self.arguments(input: input, trackID: track.id, output: output)
+            )
+            if result.terminationStatus != 0 {
+                let errStr = String(data: result.stderr, encoding: .utf8) ?? ""
+                throw MKVToolNixExtractorError.mkvextractFailed(stderr: errStr, code: result.terminationStatus)
+            }
+        } catch {
+            if error is MKVToolNixExtractorError { throw error }
+            if error is CancellationError { throw error }
+            throw MKVToolNixExtractorError.mkvextractNotFound
         }
         return output
     }
@@ -40,11 +42,20 @@ public struct MKVToolNixExtractor: TrackExtractor {
         ["tracks", input.path, "\(trackID):\(output.path)"]
     }
 
-    static func makeTempOutputURL(trackID: Int) -> URL {
+    static func makeTempOutputURL(track: Track) -> URL {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("macSubtitleOCR-gui", isDirectory: true)
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("track-\(trackID).sup")
+        return dir.appendingPathComponent("track-\(track.id).\(track.codec.extractedFileExtension)")
+    }
+}
+
+private extension Track.Codec {
+    var extractedFileExtension: String {
+        switch self {
+        case .pgs: "sup"
+        case .vobsub: "idx"
+        }
     }
 }
