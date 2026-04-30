@@ -1,6 +1,48 @@
+# Build artifacts
 .build/
 .swiftpm/
 build/
-*.xcodeproj
-.DS_Store
+*.xcodeproj/
+*.xcworkspace/
+DerivedData/
+Package.pins
+
+# macSubtitleOCR binary is produced by `make build`, not source-controlled.
 Sources/macSubtitleOCR-gui/Resources/macSubtitleOCR
+
+# macOS junk
+.DS_Store
+*.AppleDouble
+*.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*~
+*.tmp
+
+# Internal-only docs (planning, audits) — not for the public repo.
+docs/internal/
+
+# Local AI assistant context (renamed CLAUDE.md). Per-developer, not shared.
+AGENTS.md
+
+# Notarization scratch + release packaging
+*.zip
+*.dmg
+notarization-output/
+
+# Secrets — defensive
+.env
+.env.*
+*.p8
+*.p12
+*.cer
+*.pem
+secrets/
