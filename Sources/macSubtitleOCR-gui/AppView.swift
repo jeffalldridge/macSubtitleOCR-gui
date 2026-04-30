@@ -20,8 +20,7 @@ struct AppView: View {
     }
 }
 
-// Temporary stubs — will be replaced in later tasks. KEEP all four for now.
-struct DropView: View { var body: some View { Text("Drop") } }
+// Temporary stubs — will be replaced in later tasks.
 struct TracksView: View { var body: some View { Text("Tracks") } }
 struct RunView: View { var body: some View { Text("Run") } }
 struct DoneView: View { var body: some View { Text("Done") } }
