@@ -71,7 +71,7 @@ git commit -m "Bump macSubtitleOCR to <upstream-sha>"
 ## Architecture (one-liner per piece)
 
 - **`TrackProber`** — runs `mkvmerge -J` and parses subtitle tracks
-- **`MKVToolNixExtractor`** — extracts a single track to a temp `.sup` via `mkvextract`
+- **`MKVToolNixExtractor`** — extracts the selected track to temp `.sup` / `.idx` assets via `mkvextract`
 - **`OCRRunner`** — invokes the bundled `macSubtitleOCR` binary, streams progress
 - **`SRTFinalizer`** — names and moves the resulting SRT next to the input
 - **`SubtitleJob`** — observable state container driving the four-phase UI

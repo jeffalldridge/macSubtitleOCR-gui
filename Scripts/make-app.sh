@@ -54,10 +54,22 @@ cp "$MKVMERGE_REAL"   "$APP/Contents/Resources/mkvmerge"
 cp "$MKVEXTRACT_REAL" "$APP/Contents/Resources/mkvextract"
 cp "$INFO_PLIST"   "$APP/Contents/Info.plist"
 
-# --- Build app icon ---
-SVG_SRC="./Resources/icon.icon/Assets/captions.bubble 2.svg"
+# --- Install app icon ---
+# Xcode 26+ uses the Icon Composer `.icon` bundle as the canonical app icon
+# source. This SwiftPM packaging script is not run through Xcode's asset
+# pipeline, so we copy the `.icon` source into the app and also generate a
+# legacy `.icns` fallback for Launch Services / older macOS releases.
+ICON_SRC="./Resources/icon.icon"
+SVG_SRC="${ICON_SRC}/Assets/captions.bubble 2.svg"
 ICNS_DST="$APP/Contents/Resources/icon.icns"
-echo "==> Building icon.icns from SVG"
+if [[ ! -d "$ICON_SRC" ]]; then
+    echo "Error: missing Icon Composer source at $ICON_SRC" >&2
+    exit 1
+fi
+echo "==> Copying Icon Composer source"
+cp -R "$ICON_SRC" "$APP/Contents/Resources/icon.icon"
+
+echo "==> Building icon.icns fallback from Icon Composer artwork"
 swift Scripts/build-icns.swift "$SVG_SRC" "$ICNS_DST"
 if [[ ! -s "$ICNS_DST" ]]; then
     echo "Error: icon.icns was not produced or is empty." >&2
