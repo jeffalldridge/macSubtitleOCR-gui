@@ -9,7 +9,8 @@ indent_style = space
 indent_size = 4
 
 [*.md]
-trim_trailing_whitespace = false  # markdown line breaks need trailing spaces
+# Markdown line breaks sometimes intentionally use trailing spaces.
+trim_trailing_whitespace = false
 
 [Makefile]
 indent_style = tab

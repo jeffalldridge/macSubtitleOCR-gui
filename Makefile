@@ -1,4 +1,4 @@
-.PHONY: build run app dmg notarize notarize-dmg release update clean test
+.PHONY: build run app dmg package-dmg notarize notarize-dmg submit-dmg-notarization release update clean test
 
 SWIFT       ?= swift
 VENDOR      := Vendor/macSubtitleOCR
@@ -46,7 +46,9 @@ app: build Scripts/make-app.sh
 # DMG packaging — drag-to-/Applications layout.
 # ---------------------------------------------------------------------------
 
-dmg: app
+dmg: app package-dmg
+
+package-dmg:
 	@rm -f "$(DMG_PATH)"
 	@echo "==> Building $(DMG_PATH)"
 	@mkdir -p build/dmg-staging
@@ -68,6 +70,9 @@ dmg: app
 # already notarized by `make notarize`). Gives end users a totally warning-free
 # download — even macOS Sequoia's "verify before opening" sheet is bypassed.
 notarize-dmg: dmg
+	$(MAKE) submit-dmg-notarization
+
+submit-dmg-notarization:
 	@if [[ -z "$$DEV_ID" ]]; then \
 	    echo "Error: DEV_ID must be set." >&2; exit 1; \
 	fi
@@ -124,7 +129,8 @@ notarize: app
 # ---------------------------------------------------------------------------
 
 release: clean notarize
-	$(MAKE) notarize-dmg
+	$(MAKE) package-dmg
+	$(MAKE) submit-dmg-notarization
 	@echo "==> Release artifact: $(DMG_PATH) (signed + notarized + stapled)"
 	@echo "Tag with:  git tag -a v$(VERSION) -m 'v$(VERSION)' && git push --tags"
 

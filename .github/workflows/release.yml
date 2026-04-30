@@ -88,9 +88,7 @@ jobs:
         env:
           DEV_ID: ${{ secrets.DEV_ID }}
         run: |
-          make build
-          make notarize
-          make notarize-dmg
+          make release
 
       - name: Compute checksums
         run: |

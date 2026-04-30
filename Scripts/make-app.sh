@@ -82,7 +82,11 @@ fi
 # --- Verify ---
 echo "==> Verifying bundle"
 codesign --verify --verbose=1 "$APP" >/dev/null
-spctl --assess --type execute --verbose=1 "$APP" 2>&1 | head -1 || true
+if [[ -n "${DEV_ID:-}" ]]; then
+    spctl --assess --type execute --verbose=1 "$APP" 2>&1 | head -1
+else
+    echo "==> Skipping Gatekeeper assessment for ad-hoc local build"
+fi
 
 size=$(du -sh "$APP" | awk '{print $1}')
 echo "==> Built $APP ($size)"
