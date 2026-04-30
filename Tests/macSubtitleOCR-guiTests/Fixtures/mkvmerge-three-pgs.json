@@ -1,0 +1,14 @@
+{
+  "tracks": [
+    {"id": 0, "type": "video", "codec": "AVC/H.264/MPEG-4p10",
+     "properties": {"language": "und"}},
+    {"id": 1, "type": "audio", "codec": "DTS",
+     "properties": {"language": "eng"}},
+    {"id": 2, "type": "subtitles", "codec": "HDMV PGS",
+     "properties": {"language": "eng", "track_name": "English"}},
+    {"id": 3, "type": "subtitles", "codec": "HDMV PGS",
+     "properties": {"language": "spa", "track_name": "Spanish"}},
+    {"id": 4, "type": "subtitles", "codec": "VobSub",
+     "properties": {"language": "fra"}}
+  ]
+}

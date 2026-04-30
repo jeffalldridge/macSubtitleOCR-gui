@@ -17,7 +17,8 @@ let package = Package(
         .testTarget(
             name: "macSubtitleOCR-guiTests",
             dependencies: ["macSubtitleOCR-gui"],
-            path: "Tests/macSubtitleOCR-guiTests"
+            path: "Tests/macSubtitleOCR-guiTests",
+            resources: [.copy("Fixtures")]
         ),
     ]
 )
