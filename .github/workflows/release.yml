@@ -19,6 +19,11 @@ name: Release
 on:
   push:
     tags: ['v*.*.*']
+  # Fallback: tag pushes from some credentials (GitHub App / Actions tokens)
+  # do not create workflow runs, so a tag alone cannot be relied on to cut a
+  # release. Dispatch this workflow against the tag ref to build it manually:
+  #   gh workflow run Release --ref v0.1.1
+  workflow_dispatch:
 
 permissions:
   contents: write   # needed to create releases
