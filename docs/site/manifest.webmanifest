@@ -1,0 +1,13 @@
+{
+    "name": "macSubtitleOCR-gui",
+    "short_name": "macSubtitleOCR",
+    "description": "Convert Blu-ray PGS and VobSub bitmap subtitles to clean SRT on macOS using Apple Vision OCR.",
+    "start_url": "/macSubtitleOCR-gui/",
+    "display": "browser",
+    "background_color": "#0c0f14",
+    "theme_color": "#0c0f14",
+    "icons": [
+        { "src": "favicon-192.png", "sizes": "192x192", "type": "image/png" },
+        { "src": "favicon-512.png", "sizes": "512x512", "type": "image/png" }
+    ]
+}

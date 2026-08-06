@@ -20,6 +20,46 @@ If you forgot `--recurse-submodules`:
 git submodule update --init --recursive
 ```
 
+## Build, test, and release targets
+
+```sh
+make build      # compiles upstream macSubtitleOCR + this app
+make run        # builds and runs straight from the terminal
+make app        # assembles build/macSubtitleOCR-gui.app (3.6 MB, ad-hoc signed)
+make dmg        # packages the .app into a drag-to-/Applications .dmg
+make test       # runs the Swift Testing suites (40+ tests)
+make clean      # wipes build artifacts
+```
+
+For a notarization-ready build (requires an Apple Developer account):
+
+```sh
+DEV_ID="Developer ID Application: Your Name (TEAMID12345)" make notarize
+```
+
+That re-signs with hardened runtime + your Developer ID, submits to Apple's
+notary service, and staples the ticket. See [`Makefile`](Makefile) for the
+one-time `notarytool store-credentials` setup.
+
+The CI workflow (`.github/workflows/ci.yml`) builds and tests on every push.
+Release builds (`.github/workflows/release.yml`) trigger on `v*.*.*` tag
+pushes, then sign + notarize + package + publish to GitHub Releases.
+
+## Updating the upstream OCR engine
+
+The repository pins `Vendor/macSubtitleOCR` to a specific upstream tag for
+reproducible builds. To bump it:
+
+```sh
+make update                 # pulls latest from upstream/main, rebuilds
+git add Vendor/macSubtitleOCR
+git commit -m "Bump macSubtitleOCR to <upstream-sha>"
+```
+
+After a new upstream release tag, you can also do
+`git -C Vendor/macSubtitleOCR checkout v1.2.3` to lock to that version
+specifically.
+
 ## Before sending a PR
 
 - Run `make test` — all tests green.

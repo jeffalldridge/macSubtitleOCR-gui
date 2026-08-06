@@ -17,6 +17,7 @@
 ![Apple Silicon](https://img.shields.io/badge/arch-arm64-orange)
 
 **[⬇ Download the latest .dmg](https://github.com/jeffalldridge/macSubtitleOCR-gui/releases/latest)** — signed and notarized, no Gatekeeper warnings.
+**🌐 [macsubtitleocr-gui site & FAQ](https://jeffalldridge.github.io/macSubtitleOCR-gui/)**
 
 Drop an `.mkv`, `.mks`, `.sup`, `.sub`, or `.idx` file, pick one or more
 PGS or VobSub subtitle tracks, and get clean `.srt` files next to your
@@ -43,7 +44,7 @@ what you want when you're cutting a single language for a release.
 This GUI:
 
 - Probes the file and shows every PGS / VobSub track with its language and
-  name (so a Wonka remux's "English (SDH)" / "Italian (Commentary)" /
+  name (so an "English (SDH)" / "Italian (Commentary)" /
   "Japanese (Sing-Along)" tracks are obvious at a glance).
 - Lets you pick **exactly the tracks you want** — multi-select, with
   filter-by-language for big files.
@@ -109,33 +110,6 @@ reuse the cache.
 
 ---
 
-## Building, testing, releasing
-
-```sh
-make build      # compiles upstream macSubtitleOCR + this app
-make run        # builds and runs straight from the terminal
-make app        # assembles build/macSubtitleOCR-gui.app (3.6 MB, ad-hoc signed)
-make dmg        # packages the .app into a drag-to-/Applications .dmg
-make test       # runs the Swift Testing suites (40+ tests)
-make clean      # wipes build artifacts
-```
-
-For a notarization-ready build (requires an Apple Developer account):
-
-```sh
-DEV_ID="Developer ID Application: Your Name (TEAMID12345)" make notarize
-```
-
-That re-signs with hardened runtime + your Developer ID, submits to Apple's
-notary service, and staples the ticket. See [`Makefile`](Makefile) for the
-one-time `notarytool store-credentials` setup.
-
-The CI workflow (`.github/workflows/ci.yml`) builds and tests on every push.
-Release builds (`.github/workflows/release.yml`) trigger on `v*.*.*` tag
-pushes, sign + notarize + package + publish to GitHub Releases.
-
----
-
 ## Architecture (one-liner per piece)
 
 - **`TrackProber`** — runs `mkvmerge -J` and parses subtitle tracks
@@ -156,22 +130,8 @@ The full design rationale lives at
 The Path 3 roadmap for an upcoming bitmap preview + scrubber is at
 [`docs/roadmap/track-preview-scrubber.md`](docs/roadmap/track-preview-scrubber.md).
 
----
-
-## Updating the upstream OCR engine
-
-The repository pins `Vendor/macSubtitleOCR` to a specific upstream tag for
-reproducible builds. To bump it:
-
-```sh
-make update                 # pulls latest from upstream/main, rebuilds
-git add Vendor/macSubtitleOCR
-git commit -m "Bump macSubtitleOCR to <upstream-sha>"
-```
-
-After a new upstream release tag, you can also do
-`git -C Vendor/macSubtitleOCR checkout v1.2.3` to lock to that version
-specifically.
+Build targets, notarization, the release flow, and how to bump the pinned
+upstream engine are documented in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ---
 

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://jeffalldridge.github.io/macSubtitleOCR-gui/sitemap.xml
