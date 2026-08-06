@@ -6,6 +6,27 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-08-06
+
+### Fixed
+
+- **Crash on "Run OCR" ([#3](https://github.com/jeffalldridge/macSubtitleOCR-gui/issues/3)).**
+  The app terminated immediately (`EXC_BREAKPOINT` / SIGTRAP) for every user the
+  moment OCR started. Locating the embedded `macSubtitleOCR` binary read
+  SwiftPM's generated `Bundle.module` accessor, which searches only
+  `Bundle.main.bundleURL` and a path hardcoded to the *build machine's* `.build`
+  directory, then calls `fatalError()` when neither exists. The shipped `.app`
+  contains no such bundle, so the accessor trapped on every machine except the
+  one that produced the release — which is why it was not caught before
+  shipping. Binary lookup no longer depends on that accessor.
+
+### Added
+
+- `--self-check` flag that verifies an assembled `.app` resolves everything it
+  needs from inside the bundle. `Scripts/make-app.sh` and CI now run it against
+  a simulated clean machine, so a packaging regression of this kind fails the
+  build instead of reaching users.
+
 ## [0.1.0] — 2026-04-30
 
 Initial public release.

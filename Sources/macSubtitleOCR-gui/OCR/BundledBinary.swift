@@ -14,9 +14,14 @@ public enum BundledBinaryError: Error, LocalizedError {
 }
 
 public enum BundledBinary {
+    static let binaryName = "macSubtitleOCR"
+
+    /// Name of the resource bundle SwiftPM generates for this target.
+    static let resourceBundleName = "macSubtitleOCR-gui_macSubtitleOCR-gui"
+
     /// Resolve the path to the embedded macSubtitleOCR binary, trying:
     ///   1. Bundle.main resources (assembled .app)
-    ///   2. Bundle.module resources (swift run / swift test in this package)
+    ///   2. SwiftPM resource bundle (swift run / swift test in this package)
     ///   3. Adjacent to the executable (post-build copy beside `swift run` output)
     ///   4. Vendored submodule build artifact (developer fallback)
     public static func resolve() throws -> URL {
@@ -25,17 +30,40 @@ public enum BundledBinary {
         throw BundledBinaryError.notFound(searched: candidates)
     }
 
-    static func bundledPaths() -> [URL] {
+    /// Locate SwiftPM's generated resource bundle *without* trapping.
+    ///
+    /// Deliberately does not use `Bundle.module`: SwiftPM's generated accessor
+    /// looks only in `Bundle.main.bundleURL` and a path hardcoded to the build
+    /// machine's `.build` directory, then calls `Swift.fatalError()`. Inside our
+    /// hand-assembled `.app` neither exists on an end user's machine, so merely
+    /// reading it killed the app with SIGTRAP (issue #3). The bundle is optional
+    /// here — it is a development convenience, not a shipping requirement.
+    static func moduleResourceBundle() -> Bundle? {
+        let searchDirs = [
+            Bundle.main.resourceURL,
+            Bundle.main.bundleURL,
+            Bundle.main.executableURL?.deletingLastPathComponent(),
+        ].compactMap { $0 }
+
+        for dir in searchDirs {
+            let url = dir.appendingPathComponent(resourceBundleName + ".bundle")
+            if let bundle = Bundle(url: url) { return bundle }
+        }
+        return nil
+    }
+
+    static func bundledPaths(mainBundle: Bundle = .main,
+                             moduleBundle: Bundle? = BundledBinary.moduleResourceBundle()) -> [URL] {
         var paths: [URL] = []
-        if let main = Bundle.main.url(forResource: "macSubtitleOCR", withExtension: nil) {
+        if let main = mainBundle.url(forResource: binaryName, withExtension: nil) {
             paths.append(main)
         }
-        if let module = Bundle.module.url(forResource: "macSubtitleOCR", withExtension: nil) {
+        if let module = moduleBundle?.url(forResource: binaryName, withExtension: nil) {
             paths.append(module)
         }
         // Adjacent to the running executable (Contents/MacOS/...)
-        if let exe = Bundle.main.executableURL?.deletingLastPathComponent() {
-            paths.append(exe.appendingPathComponent("macSubtitleOCR"))
+        if let exe = mainBundle.executableURL?.deletingLastPathComponent() {
+            paths.append(exe.appendingPathComponent(binaryName))
         }
         return paths
     }

@@ -49,3 +49,7 @@ jobs:
           codesign --verify --verbose=1 build/macSubtitleOCR-gui.app
           # Confirm the bundled OCR binary is still functional
           build/macSubtitleOCR-gui.app/Contents/Resources/macSubtitleOCR --help | head -1
+          # `make app` already runs the app's own --self-check against a
+          # clean-machine simulation (see Scripts/make-app.sh). Re-run it here
+          # so the packaging regression from issue #3 stays covered explicitly.
+          build/macSubtitleOCR-gui.app/Contents/MacOS/macSubtitleOCR-gui --self-check

@@ -88,5 +88,33 @@ else
     echo "==> Skipping Gatekeeper assessment for ad-hoc local build"
 fi
 
+# --- Self-check (regression guard for issue #3) ---
+# The app must resolve everything it needs from inside the bundle. SwiftPM's
+# generated `Bundle.module` accessor falls back to an absolute path inside this
+# machine's .build directory, which exists here and on CI but never on a user's
+# Mac — that discrepancy is exactly why the "Run OCR" crash shipped unnoticed.
+# Hide that directory for the duration so we test what an end user actually gets.
+SPM_BUNDLE="$(ls -d .build/*/release/macSubtitleOCR-gui_macSubtitleOCR-gui.bundle 2>/dev/null | head -1 || true)"
+
+restore_spm_bundle() {
+    if [[ -n "${SPM_BUNDLE:-}" && -d "${SPM_BUNDLE}.selfcheck-hidden" ]]; then
+        mv "${SPM_BUNDLE}.selfcheck-hidden" "$SPM_BUNDLE"
+    fi
+}
+trap restore_spm_bundle EXIT
+
+if [[ -n "$SPM_BUNDLE" ]]; then
+    mv "$SPM_BUNDLE" "${SPM_BUNDLE}.selfcheck-hidden"
+fi
+
+echo "==> Self-check (simulating a clean end-user machine)"
+if ! "$APP/Contents/MacOS/${EXEC_NAME}" --self-check; then
+    echo "Error: the assembled app failed its self-check; it is not self-contained." >&2
+    exit 1
+fi
+
+restore_spm_bundle
+trap - EXIT
+
 size=$(du -sh "$APP" | awk '{print $1}')
 echo "==> Built $APP ($size)"
