@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct DoneView: View {
     @Environment(SubtitleJob.self) private var job
@@ -15,87 +15,92 @@ struct DoneView: View {
         }
     }
 
-    @ViewBuilder
     private func successView(outputs: [URL]) -> some View {
-        VStack(spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 12) {
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 36, weight: .semibold))
+                    .font(.system(size: 32))
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(.green)
+                    .accessibilityHidden(true)
+
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(outputs.count == 1 ? "Saved 1 subtitle" : "Saved \(outputs.count) subtitles")
-                        .font(.title2.weight(.semibold))
-                    Text(savedDirectoryHint(outputs: outputs))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1).truncationMode(.middle)
+                    Text(outputs.count == 1 ? "Saved 1 subtitle file"
+                                            : "Saved \(outputs.count) subtitle files")
+                        .font(.headline)
+                        .accessibilityAddTraits(.isHeader)
+                    if let dir = outputs.first?.deletingLastPathComponent() {
+                        Text(dir.path(percentEncoded: false))
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .help(dir.path(percentEncoded: false))
+                    }
                 }
                 Spacer()
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
 
             ScrollView {
-                VStack(spacing: 10) {
+                LazyVStack(spacing: 10) {
                     ForEach(outputs, id: \.self) { url in
                         SRTPreviewCard(url: url)
                     }
                 }
+                .padding(.vertical, 2)
             }
             .frame(maxHeight: .infinity)
 
             HStack {
-                if outputs.count > 1 {
-                    Button("Reveal all in Finder") {
-                        NSWorkspace.shared.activateFileViewerSelecting(outputs)
-                    }
-                } else if let only = outputs.first {
-                    Button("Reveal in Finder") {
-                        NSWorkspace.shared.activateFileViewerSelecting([only])
-                    }
+                Button(outputs.count > 1 ? "Reveal All in Finder" : "Reveal in Finder") {
+                    NSWorkspace.shared.activateFileViewerSelecting(outputs)
                 }
+                .disabled(outputs.isEmpty)
+
                 Spacer()
-                Button("OCR another") { job.reset() }
+
+                Button("Convert Another File") { job.reset() }
                     .keyboardShortcut(.defaultAction)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
-    @ViewBuilder
     private func failureView(message: String) -> some View {
-        VStack(spacing: 18) {
-            Image(systemName: "xmark.octagon.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.red)
-            Text("Failed").font(.title2).bold()
+        VStack(spacing: 14) {
+            Spacer(minLength: 0)
+
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 40))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.orange)
+                .accessibilityHidden(true)
+
+            Text("Couldn’t finish the conversion")
+                .font(.headline)
+                .accessibilityAddTraits(.isHeader)
+
             Text(message)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 420)
+
             if !job.logLines.isEmpty {
                 DisclosureGroup("Details") {
-                    ScrollView {
-                        Text(job.logLines.joined(separator: "\n"))
-                            .font(.system(.caption, design: .monospaced))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .textSelection(.enabled)
-                            .padding(8)
-                    }
-                    .frame(minHeight: 120, maxHeight: 200)
-                    .background(Color.black.opacity(0.06), in: RoundedRectangle(cornerRadius: 6))
+                    LogPanel(lines: job.logLines, minHeight: 120)
+                        .padding(.top, 4)
                 }
+                .frame(maxWidth: 520)
             }
-            HStack {
-                Button("Try again") { job.reset() }
-                    .keyboardShortcut(.defaultAction)
-            }
+
+            Button("Start Over") { job.reset() }
+                .keyboardShortcut(.defaultAction)
+                .padding(.top, 4)
+
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private func savedDirectoryHint(outputs: [URL]) -> String {
-        guard let first = outputs.first else { return "" }
-        let dir = first.deletingLastPathComponent().path
-        return "Next to your source: \(dir)"
     }
 }
 
@@ -106,33 +111,38 @@ private struct SRTPreviewCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(url.lastPathComponent)
                     .font(.system(.body, design: .monospaced).weight(.medium))
-                    .lineLimit(1).truncationMode(.middle)
-                Spacer()
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .textSelection(.enabled)
+
+                Spacer(minLength: 8)
+
                 if loaded && preview.totalCount > 0 {
                     Text("\(preview.totalCount) cues")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .monospacedDigit()
                 }
+
                 Button {
                     NSWorkspace.shared.activateFileViewerSelecting([url])
                 } label: {
-                    Image(systemName: "magnifyingglass.circle")
-                        .imageScale(.large)
-                        .foregroundStyle(.secondary)
+                    Image(systemName: "folder")
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
+                .controlSize(.small)
                 .help("Reveal in Finder")
+                .accessibilityLabel("Reveal \(url.lastPathComponent) in Finder")
             }
 
             if loaded {
                 if preview.cues.isEmpty {
-                    Text("Empty file — no cues recognized.")
+                    Text("No cues were recognized in this file.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
-                        .italic()
                 } else {
                     VStack(alignment: .leading, spacing: 4) {
                         ForEach(preview.cues, id: \.index) { cue in
@@ -140,7 +150,7 @@ private struct SRTPreviewCard: View {
                                 Text(cue.timing)
                                     .font(.system(.caption, design: .monospaced))
                                     .foregroundStyle(.tertiary)
-                                    .frame(minWidth: 90, alignment: .leading)
+                                    .frame(minWidth: 92, alignment: .leading)
                                 Text(cue.text)
                                     .font(.callout)
                                     .lineLimit(2)
@@ -160,7 +170,10 @@ private struct SRTPreviewCard: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+        .background(.quinary, in: RoundedRectangle(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8).strokeBorder(.separator)
+        }
         .task(id: url) {
             preview = (try? SRTPreviewLoader.load(url, maxCues: 3)) ?? .empty
             loaded = true

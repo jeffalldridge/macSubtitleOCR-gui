@@ -6,6 +6,39 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **Native macOS window structure.** The document identity now lives in the
+  title bar (`sintel.mks — 2 subtitle tracks`) instead of a custom header
+  duplicating the app name inside the content area, and the window has a
+  toolbar with an Open button.
+- **Real File and Help menus.** File ▸ Open… (⌘O) and Close File (⇧⌘W) work
+  from the menu bar; Help links to the site and the issue tracker. Opening a
+  file is no longer reachable only from the drop screen.
+- **Track picker is a native `List`** with row separators and selection
+  affordances, replacing a hand-rolled stack of toggles inside a fixed-height
+  scroll view. It now grows with the window instead of being capped at 280 pt.
+- Windows resize freely above a sensible minimum (`contentMinSize`); the
+  previous `contentSize` policy pinned the window to its content.
+- OCR options use a grouped `Form`, matching system settings layout.
+- Typography follows Apple conventions: real ellipses, em dashes in track
+  titles, and `·` separators for track metadata.
+
+### Fixed
+
+- Log and preview panels used `Color.black.opacity(0.06)`, which was close to
+  invisible in Dark Mode. They now use semantic fills that adapt to both
+  appearances.
+- The Cancel button during a run was styled `.destructive` (red); cancelling
+  isn't a destructive action, and it now responds to Escape.
+
+### Added
+
+- Log panels auto-scroll to follow new output and have a copy-to-clipboard
+  button.
+- VoiceOver labels for icon-only controls, drop target, progress, and track
+  rows.
+
 ## [0.1.1] — 2026-08-06
 
 ### Fixed

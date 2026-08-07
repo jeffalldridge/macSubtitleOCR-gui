@@ -36,7 +36,7 @@ public struct Track: Identifiable, Hashable, Sendable {
 
     public var displayTitle: String {
         let languageName = language.map(Self.displayName(forLanguageCode:)) ?? "Unknown language"
-        return "Track \(id) - \(languageName)"
+        return "Track \(id) — \(languageName)"
     }
 
     public var displaySubtitle: String {
@@ -44,7 +44,7 @@ public struct Track: Identifiable, Hashable, Sendable {
         if let name, !name.isEmpty {
             parts.append(name)
         }
-        return parts.joined(separator: " - ")
+        return parts.joined(separator: " · ")
     }
 
     public var languageBadge: String? {
