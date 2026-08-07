@@ -83,7 +83,12 @@ fi
 echo "==> Verifying bundle"
 codesign --verify --verbose=1 "$APP" >/dev/null
 if [[ -n "${DEV_ID:-}" ]]; then
-    spctl --assess --type execute --verbose=1 "$APP" 2>&1 | head -1
+    # Gatekeeper rejects a Developer ID app that has not been notarized yet,
+    # which is the expected state at this point -- notarization and stapling
+    # happen afterwards in `make notarize`. Report the verdict but never fail
+    # on it; `make notarize` asserts acceptance once the ticket is stapled.
+    echo "==> Gatekeeper assessment (pre-notarization, informational)"
+    spctl --assess --type execute --verbose=1 "$APP" 2>&1 | head -1 || true
 else
     echo "==> Skipping Gatekeeper assessment for ad-hoc local build"
 fi

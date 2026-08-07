@@ -121,6 +121,8 @@ notarize: app
 	@echo "==> Stapling notarization ticket"
 	xcrun stapler staple "$(APP_BUNDLE)"
 	xcrun stapler validate "$(APP_BUNDLE)"
+	@echo "==> Verifying Gatekeeper acceptance (must pass once stapled)"
+	spctl --assess --type execute --verbose=1 "$(APP_BUNDLE)"
 	@rm -f build/notarize.zip
 	@echo "==> Notarized $(APP_BUNDLE)"
 
