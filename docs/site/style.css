@@ -190,13 +190,13 @@ code {
 .version { font-size: 13px; color: var(--dim); margin: 0; }
 .version a { color: var(--muted); }
 
+/* The screenshots are transparent window captures that already carry their
+   own rounded corners and drop shadow, so no frame here — a border or a
+   second box-shadow would draw a rectangle around the transparent margin.
+   Widened to compensate: ~13% of the image is that margin. */
 .hero-shot {
     margin-top: 40px;
-    border: 1px solid var(--rule);
-    border-radius: 14px;
-    overflow: hidden;
-    box-shadow: 0 24px 60px rgba(0,0,0,0.5);
-    max-width: 640px;
+    max-width: 740px;
 }
 
 .hero-shot img { display: block; width: 100%; height: auto; }
@@ -276,13 +276,10 @@ code {
 
 .steps li strong { color: var(--text); font-weight: 600; }
 
+/* Frameless for the same reason as .hero-shot above. */
 .shot {
     margin: 28px 0 0;
-    border: 1px solid var(--rule);
-    border-radius: 14px;
-    overflow: hidden;
-    box-shadow: 0 16px 44px rgba(0,0,0,0.4);
-    max-width: 520px;
+    max-width: 600px;
 }
 
 .shot img { display: block; width: 100%; height: auto; }

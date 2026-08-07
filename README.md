@@ -12,6 +12,7 @@
 [![CI](https://github.com/jeffalldridge/macSubtitleOCR-gui/actions/workflows/ci.yml/badge.svg)](https://github.com/jeffalldridge/macSubtitleOCR-gui/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/jeffalldridge/macSubtitleOCR-gui)](https://github.com/jeffalldridge/macSubtitleOCR-gui/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/jeffalldridge/macSubtitleOCR-gui/total)](https://github.com/jeffalldridge/macSubtitleOCR-gui/releases)
+[![Website](https://img.shields.io/badge/website-macsubtitleocr--gui-0a7ea4)](https://jeffalldridge.github.io/macSubtitleOCR-gui/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![macOS 14+](https://img.shields.io/badge/macOS-14%2B-black?logo=apple)
 ![Apple Silicon](https://img.shields.io/badge/arch-arm64-orange)
