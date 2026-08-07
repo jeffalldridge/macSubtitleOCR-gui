@@ -187,10 +187,9 @@ private struct TrackCheckRow: View {
     var body: some View {
         Toggle(isOn: $isOn) {
             HStack(spacing: 10) {
-                Image(systemName: track.isForced ? "captions.bubble.fill" : "captions.bubble")
-                    .foregroundStyle(track.isForced ? Color.accentColor : Color.secondary)
-                    .accessibilityHidden(true)
-
+                // No leading glyph here: it centred on the two-line label while
+                // the checkbox aligned to the title, which read as misaligned.
+                // "Forced" and "Default" are already carried by the badges.
                 VStack(alignment: .leading, spacing: 1) {
                     Text(track.displayTitle)
                     Text(track.displaySubtitle)
