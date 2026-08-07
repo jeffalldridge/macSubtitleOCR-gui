@@ -6,6 +6,11 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-08-07
+
+A user-interface release: the app now follows the macOS Human Interface
+Guidelines more closely, and scales to files with many subtitle tracks.
+
 ### Changed
 
 - **Native macOS window structure.** The document identity now lives in the
@@ -31,6 +36,9 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   appearances.
 - The Cancel button during a run was styled `.destructive` (red); cancelling
   isn't a destructive action, and it now responds to Escape.
+- Track rows were visually misaligned: the leading captions glyph centred on
+  the two-line label while the checkbox aligned to the title. The glyph is
+  gone — "Default" and "Forced" badges already carried that information.
 
 ### Added
 
