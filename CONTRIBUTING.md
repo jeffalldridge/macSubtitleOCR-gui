@@ -52,6 +52,28 @@ workflow can be run by hand if a tag push doesn't pick it up:
 gh workflow run Release --ref v0.1.1
 ```
 
+## Screenshots
+
+Docs screenshots are window captures with an alpha channel — the window and
+its shadow, nothing of the desktop behind it. That's what ⇧⌘4 then Space
+produces interactively; `Scripts/capture-window.sh` does it non-interactively:
+
+```sh
+make app && open build/macSubtitleOCR-gui.app
+Scripts/capture-window.sh docs/screenshots/main-window.png "macSubtitleOCR"
+Scripts/capture-window.sh docs/screenshots/track-selection.png "sintel"
+cp docs/screenshots/*.png docs/site/     # the site uses the same images
+```
+
+Don't use `screencapture -R x,y,w,h`: a region grab is a flat rectangle, so
+whatever is behind the window's rounded corners bleeds into the image and
+there's no transparency.
+
+Always pass the title substring, and **look at the result before committing**.
+Open and Save panels belong to the same process, so capturing one by accident
+publishes your Finder sidebar. The script skips known panel titles and fails
+if the output has no alpha channel, but neither check replaces looking.
+
 ## Two packaging rules worth knowing
 
 Both of these caused shipped bugs, and neither is visible in a normal local
