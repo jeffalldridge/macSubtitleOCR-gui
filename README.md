@@ -44,8 +44,8 @@ what you want when you're cutting a single language for a release.
 This GUI:
 
 - Probes the file and shows every PGS / VobSub track with its language and
-  name (so an "English (SDH)" / "Italian (Commentary)" /
-  "Japanese (Sing-Along)" tracks are obvious at a glance).
+  name, so "English (SDH)" / "Italian (Commentary)" /
+  "Japanese (Sing-Along)" tracks are obvious at a glance.
 - Lets you pick **exactly the tracks you want** — multi-select, with
   filter-by-language for big files.
 - Runs OCR with a real progress UI and a cancel button.
@@ -117,6 +117,8 @@ reuse the cache.
   via `mkvextract`
 - **`OCRRunner`** — invokes the bundled `macSubtitleOCR` binary, streams
   log output and exit status as `AsyncStream` events
+- **`OCRPipeline`** — orchestrates the per-track run: extract → OCR →
+  finalize, honouring cancellation and cleaning up temp files
 - **`SRTFinalizer`** — names and moves the resulting SRT next to the input;
   sanitizes track name into the filename
 - **`SubtitleJob`** — `@Observable` state container driving the four-phase UI
@@ -124,10 +126,14 @@ reuse the cache.
 - **`ToolchainProbe` / `BundledBinary`** — locate `mkvtoolnix` /
   `macSubtitleOCR` at runtime, preferring the `.app` bundle over any system
   install
+- **`SelfCheck`** — `--self-check` flag that verifies an assembled `.app`
+  resolves its dependencies from inside the bundle (run by packaging and CI)
 
-The full design rationale lives at
-[`docs/specs/2026-04-30-macSubtitleOCR-gui-design.md`](docs/specs/2026-04-30-macSubtitleOCR-gui-design.md).
-The Path 3 roadmap for an upcoming bitmap preview + scrubber is at
+The original design rationale is archived at
+[`docs/specs/2026-04-30-macSubtitleOCR-gui-design.md`](docs/specs/2026-04-30-macSubtitleOCR-gui-design.md) —
+a point-in-time snapshot, since superseded in places (most notably it
+describes selecting a single track; the shipped app is multi-select). A
+proposed, not-yet-implemented bitmap preview + scrubber is sketched at
 [`docs/roadmap/track-preview-scrubber.md`](docs/roadmap/track-preview-scrubber.md).
 
 Build targets, notarization, the release flow, and how to bump the pinned
@@ -196,6 +202,15 @@ Commentary / Sing-Along variants are obviously distinct.
 ---
 
 ## Troubleshooting
+
+### The app quits instantly when I click "Run OCR"
+
+Update to **v0.1.1 or newer** —
+[latest release](https://github.com/jeffalldridge/macSubtitleOCR-gui/releases/latest).
+Versions up to 0.1.0 crashed here on every machine except the one that built
+the release, because the app looked for a resource bundle that isn't inside
+the shipped `.app`. Nothing was wrong with your file or your setup. See
+[#3](https://github.com/jeffalldridge/macSubtitleOCR-gui/issues/3).
 
 ### "MKVToolNix is required" banner won't go away after I installed it
 

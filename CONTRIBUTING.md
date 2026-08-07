@@ -25,7 +25,7 @@ git submodule update --init --recursive
 ```sh
 make build      # compiles upstream macSubtitleOCR + this app
 make run        # builds and runs straight from the terminal
-make app        # assembles build/macSubtitleOCR-gui.app (3.6 MB, ad-hoc signed)
+make app        # assembles build/macSubtitleOCR-gui.app (~3.4 MB, ad-hoc signed)
 make dmg        # packages the .app into a drag-to-/Applications .dmg
 make test       # runs the Swift Testing suites (40+ tests)
 make clean      # wipes build artifacts
@@ -35,6 +35,8 @@ For a notarization-ready build (requires an Apple Developer account):
 
 ```sh
 DEV_ID="Developer ID Application: Your Name (TEAMID12345)" make notarize
+make notarize-dmg   # same, plus notarizes and staples the .dmg itself
+make release        # clean → notarize → dmg → notarize dmg (full pipeline)
 ```
 
 That re-signs with hardened runtime + your Developer ID, submits to Apple's
@@ -43,7 +45,46 @@ one-time `notarytool store-credentials` setup.
 
 The CI workflow (`.github/workflows/ci.yml`) builds and tests on every push.
 Release builds (`.github/workflows/release.yml`) trigger on `v*.*.*` tag
-pushes, then sign + notarize + package + publish to GitHub Releases.
+pushes, then sign + notarize + package + publish to GitHub Releases. The same
+workflow can be run by hand if a tag push doesn't pick it up:
+
+```sh
+gh workflow run Release --ref v0.1.1
+```
+
+## Two packaging rules worth knowing
+
+Both of these caused shipped bugs, and neither is visible in a normal local
+build. If you touch `Scripts/make-app.sh`, `Package.swift`, or the Makefile's
+signing targets, read this first.
+
+**1. Never use `Bundle.module` in shipping code.** SwiftPM's generated
+accessor looks only in `Bundle.main.bundleURL` and a path hardcoded at compile
+time to *the build machine's* `.build` directory, then calls `fatalError()`.
+The `.app` is hand-assembled and contains no such bundle, so reading it
+crashes for every user while working perfectly for whoever built the release
+([#3](https://github.com/jeffalldridge/macSubtitleOCR-gui/issues/3)). Use
+`BundledBinary.moduleResourceBundle()`, which does the same search and returns
+`nil` instead of trapping.
+
+**2. Gatekeeper assessment comes *after* notarization.** `spctl --assess`
+correctly rejects a Developer ID app that hasn't been notarized yet, so it
+must not be a hard gate inside `make-app.sh` — under `set -euo pipefail` its
+exit 3 aborts the whole build. It's informational there and asserted in the
+Makefile's `notarize` target once the ticket is stapled.
+
+Because unit tests run inside the SwiftPM build tree, they cannot catch either
+problem. The app therefore ships a `--self-check` that runs against the
+assembled bundle with the SwiftPM resource bundle hidden, i.e. against a
+simulated clean machine:
+
+```sh
+build/macSubtitleOCR-gui.app/Contents/MacOS/macSubtitleOCR-gui --self-check
+```
+
+`make app` and CI run it automatically; it exits non-zero if the `.app` is not
+self-contained. Verify packaging changes against a built `.app` — ideally a
+downloaded release artifact — not just `swift test`.
 
 ## Updating the upstream OCR engine
 

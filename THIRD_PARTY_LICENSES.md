@@ -60,19 +60,12 @@ Vendor/macSubtitleOCR/LICENSE.md)
 
 ## Build-time dependencies (not bundled or shipped)
 
-### dylibbundler (legacy build tooling)
+None. Building the app requires only Swift and Xcode's command-line tools.
 
-Earlier development versions of this project bundled MKVToolNix into the
-`.app` and used `dylibbundler` to relocate dynamic libraries. The current
-public release does **not** bundle MKVToolNix (see above), so `dylibbundler`
-is no longer required. The historical commits remain in git history.
-
-### MKVToolNix and dylibbundler at build time
-
-Neither tool is required to build this app any longer. Earlier in the
-project's history they were used to assemble a self-contained `.app`; the
-current public release relies on the user's own Homebrew-installed MKVToolNix
-at runtime.
+> Historical note: early development builds bundled MKVToolNix into the `.app`
+> and used `dylibbundler` to relocate dynamic libraries. Neither is used
+> today — the shipped app is MIT-only and calls the user's own
+> Homebrew-installed MKVToolNix at runtime.
 
 ## Notes on attribution
 

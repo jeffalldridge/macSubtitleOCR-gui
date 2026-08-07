@@ -1,7 +1,14 @@
 # macSubtitleOCR-gui — Design Spec
 
+> **Historical document.** This is the original v0.1 design, kept for
+> rationale and context. It is *not* maintained against the shipped app and
+> has diverged in places — most notably it describes selecting **a single
+> track**, whereas the app has shipped multi-track selection since v0.1.0.
+> For current behavior see the [README](../../README.md); for build and
+> release mechanics see [CONTRIBUTING.md](../../CONTRIBUTING.md).
+
 **Date:** 2026-04-30
-**Status:** Approved (brainstorming complete)
+**Status:** Historical — superseded in part by the shipped app
 **Author:** Jeff Alldridge + Claude
 
 ## Purpose

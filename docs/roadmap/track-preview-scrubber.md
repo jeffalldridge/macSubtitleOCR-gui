@@ -1,4 +1,4 @@
-# Roadmap — Track Preview & Scrubber (Path 3)
+# Roadmap — Track Preview & Scrubber
 
 **Status:** Proposed (no implementation yet)
 **Author:** Jeff Alldridge (with Claude)
@@ -14,7 +14,7 @@ After picking a track in the **Tracks** screen, an inline **Preview** panel reve
 
 Once OCR finishes, the same scrubber comes back with the OCR'd text overlaid on each frame, so the user can spot bad cues before muxing.
 
-The bar this needs to clear: **scrubbing through a 3,000-cue Wonka track on an M-series Mac feels as smooth as scrubbing a video timeline in Final Cut.**
+The bar this needs to clear: **scrubbing through a 3,000-cue subtitle track on an M-series Mac feels as smooth as scrubbing a video timeline in Final Cut.**
 
 ---
 
@@ -23,18 +23,18 @@ The bar this needs to clear: **scrubbing through a 3,000-cue Wonka track on an M
 | User pain today | What the preview fixes |
 |---|---|
 | "Is this *actually* the English SDH track or just standard subs?" | Skim the bitmaps in 3 seconds, see hearing-impaired cues like `[door slams]`. |
-| "Wonka has 15 PGS tracks; commentary tracks alone are 800 cues. Which one is the director?" | Read a few cues; commentary is plain text on otherwise empty frames. |
+| "This remux has 15 PGS tracks; commentary tracks alone are 800 cues. Which one is the director?" | Read a few cues; commentary is plain text on otherwise empty frames. |
 | "OCR took 4 minutes on the wrong track" | Decide *before* spending OCR time. |
 | "OCR'd this last week, do I need to redo it?" | Disk-cached preview index opens instantly the second time. |
 | "One cue OCR'd wrong, do I redo the whole track?" | Future: re-OCR a single cue from the preview panel. |
 
-The killer use case is the multi-track UHD remux (Moana: 28 PGS tracks). Without a preview, the user is doing a "trust the metadata or run OCR and see" gamble. With it, the call is obvious.
+The killer use case is the multi-track UHD remux (28+ PGS tracks is not unusual). Without a preview, the user is doing a "trust the metadata or run OCR and see" gamble. With it, the call is obvious.
 
 ---
 
 ## 3. What "great" looks like
 
-A user dragging a Wonka MKV in:
+A user dragging a multi-track MKV in:
 
 1. Drop file → Tracks screen lists 15 PGS tracks (already works).
 2. Click "English (SDH)". A panel slides in below the list:
@@ -148,9 +148,9 @@ Goal: the user clicks a track in `TracksView`, an inline preview slides in.
 - Multi-track preview: when the user has multiple tracks ticked, the preview area gets a small **track selector** (pill row) so they can switch between previews without re-extracting. We keep up to 3 readers warm; the rest are lazily evicted.
 - Preview is collapsible (default open when 1 track ticked, default collapsed when many).
 
-**Acceptance:** drop the sintel fixture → tick the only track → preview appears within 1s, cue count matches, scrubbing works. Drop Wonka → tick "English (SDH)" → preview appears within 5s on first open, <500ms on second open. Tick another Wonka track → tab switches; previously-seen preview comes back instantly.
+**Acceptance:** drop the sintel fixture → tick the only track → preview appears within 1s, cue count matches, scrubbing works. Drop a large multi-track remux → tick "English (SDH)" → preview appears within 5s on first open, <500ms on second open. Tick another track from it → tab switches; previously-seen preview comes back instantly.
 
-**Deliverable:** a commit that wires preview into the main flow. Manual smoke test against Moana + Wonka.
+**Deliverable:** a commit that wires preview into the main flow. Manual smoke test against two large multi-track remuxes.
 
 ---
 
@@ -200,7 +200,7 @@ Goal: someone (you next year, me, or a contributor) can pick this up cold.
 
 **Work:**
 
-- README: new "Preview" section with screenshot of Wonka in the scrubber.
+- README: new "Preview" section with screenshot of a multi-track remux in the scrubber.
 - `CLAUDE.md`: note the cache location, the eviction policy, and which classes own which state.
 - A short doc at `docs/architecture/track-preview.md` covering the data flow from drop → extract → index → render.
 - Manual smoke test plan documented (drop test fixtures, scrub, run OCR, verify overlay).
@@ -258,7 +258,7 @@ Goal: someone (you next year, me, or a contributor) can pick this up cold.
 | **Vendored PGS decoder drifts from upstream.** | Vendor only the parser core; leave a `VENDORED.md` listing the upstream commit hash + file paths. `make update` does NOT touch our vendored copy — keep it manual so a contributor sees the diff. Re-vendor when upstream PGS code changes (rare). |
 | **Disk cache invalidation is hard.** | Key on `(file_hash_first_1MB + size + track_id)`. Don't try to be perfect; cache misses are cheap (re-extract). |
 | **5,000-cue scrubber tanks SwiftUI.** | Verify with Instruments early in Phase 4. Fallback: render ticks via `Canvas` with a single `Path`, or downsample to 500 ticks visually with a "more cues here" hover. |
-| **PGS decoder bugs on weird sources.** | Use the existing macSubtitleOCR test fixtures (sintel.sup) as our test corpus. Add Wonka + Moana fixtures (small extracted slices) as regression tests. |
+| **PGS decoder bugs on weird sources.** | Use the existing macSubtitleOCR test fixtures (sintel.sup) as our test corpus. Add large-remux fixtures (small extracted slices) as regression tests. |
 | **Memory blows up on 8MB-per-frame caching.** | Hard cap the in-memory cache at 50 frames (~400MB). Disk cache PNGs (compressed). Don't cache uncompressed bitmaps. |
 | **Multi-track preview becomes confusing UI.** | Phase 3 ships single-preview-at-a-time with a track switcher pill row. Resist the urge to do split-pane or carousel until users ask. |
 | **Phase 5 features tempt scope creep.** | Strict: pick 2–3 max. The rest go in a "future" doc. |
@@ -281,11 +281,11 @@ If you'd rather hit "good" in a week and skip "magical":
 |---|---|---|
 | Skip Phase 4 polish | 6–8 hrs | Scrubbing isn't smooth on 3,000-cue tracks; memory footprint is sloppy |
 | Skip Phase 5 entirely | 4–6 hrs | No OCR overlay, no cue exclusion, no heatmap |
-| Skip disk cache (memory only) | 2 hrs | Re-opening Wonka next week takes 5s instead of instant |
+| Skip disk cache (memory only) | 2 hrs | Re-opening a large track next week takes 5s instead of instant |
 | Single-track preview only (drop multi-track switching) | 2 hrs | Have to un-tick / re-tick to compare two tracks |
 | Drop pinch-zoom | 1 hr | Hard cues are harder to read |
 
-**Minimum viable preview = Phases 1–3 only**, ~16–22 hrs. Buys you a real bitmap timeline with keyboard navigation, single-track-at-a-time. The Wonka use case works; the magic is missing but the function is there.
+**Minimum viable preview = Phases 1–3 only**, ~16–22 hrs. Buys you a real bitmap timeline with keyboard navigation, single-track-at-a-time. The large-remux use case works; the magic is missing but the function is there.
 
 ---
 
@@ -295,7 +295,7 @@ To kick this off I need from you:
 
 1. **Approve the phase breakdown** — or push back on any phase as too big or too small.
 2. **Answer the 5 open questions in §6** — especially the Phase 5 picks and the multi-track UI.
-3. **Confirm scope** — full Path 3 (~30+ hrs) or compressed (Phases 1–3, ~20 hrs).
+3. **Confirm scope** — the full roadmap (~30+ hrs) or compressed (Phases 1–3, ~20 hrs).
 4. **Greenlight Phase 1.** I'd start with the decoder vendoring + tests in a single PR/commit, since it's the foundation for everything else and has no UI risk.
 
 Once Phase 1 lands, I'd write a real spec at `docs/superpowers/specs/<date>-track-preview-phase-N.md` per phase as we go, following the same flow we used for the original app — brainstorm → spec → plan → implement.

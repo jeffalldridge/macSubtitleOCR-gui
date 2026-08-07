@@ -20,6 +20,12 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   one that produced the release — which is why it was not caught before
   shipping. Binary lookup no longer depends on that accessor.
 
+- **Release builds failing at `make app`.** The Gatekeeper check in
+  `Scripts/make-app.sh` ran before notarization, where `spctl` correctly
+  rejects a signed-but-not-yet-notarized app; under `set -euo pipefail` its
+  exit 3 aborted the build. The assessment is now informational there and
+  asserted in `make notarize` after the ticket is stapled.
+
 ### Added
 
 - `--self-check` flag that verifies an assembled `.app` resolves everything it
