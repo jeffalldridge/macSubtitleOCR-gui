@@ -94,15 +94,19 @@ Apple Intelligence clean-up needs macOS 26 with Apple Intelligence turned on.
 1. **Add files.** Drag them onto the window, use ⌘O, pick the app in the
    Finder's Open With menu, or select files in the Finder and choose
    Services ▸ Recognize Subtitles.
-2. **Pick tracks.** Every PGS and VobSub track appears in the sidebar with
-   its language, name, and flags. Tracks matching your language preference
-   are ticked automatically.
-3. **Recognize.** ⌘R. Watch per-cue progress; cancel any time with ⌘..
-4. **Review.** Each cue shows its bitmap next to the recognized text. Flagged
-   cues are the ones worth a look. Edit inline; the file is rewritten as you
-   go. ⌘Z undoes.
-5. **Mux.** The `.srt` files are already next to your source, or in the
-   folder you chose in Settings.
+2. **Pick tracks.** The queue across the top of the window lists every file
+   and, underneath it, every PGS and VobSub track with its language, cue
+   count, and what it is doing. Tracks matching your language preference are
+   ticked automatically.
+3. **Choose where they go.** The toolbar says where subtitle files will land.
+   Next to the film is the default; you can pick a folder, or have the app
+   ask each time.
+4. **Make subtitles.** Press the play button, or ⌘R. Progress counts real
+   cues; the same button becomes Stop, and ⌘. does the same.
+5. **Review.** The pane below the queue shows each cue's bitmap next to the
+   recognized text. Flagged cues are the ones worth a look. Edit inline; the
+   file is rewritten as you go. ⌘Z undoes.
+6. **Mux.** The `.srt` files are already where you asked for them.
 
 ---
 
@@ -114,7 +118,9 @@ Two targets. The engine has no user interface and can be used on its own.
 
 | Piece | Job |
 |---|---|
-| `MKVReader` | Memory-mapped Matroska: probes `Info` and `Tracks` in milliseconds, extracts one track's blocks by walking clusters once |
+| `MKVReader` | Memory-mapped Matroska: probes `Info` and `Tracks` in milliseconds, then follows the file's own `Cues` index to the clusters holding a track instead of reading the whole film |
+| `MatroskaCues` | The `Cues` index, found either before the clusters or through the `SeekHead` |
+| `ContentCompression` | Undoes the frame compression remuxers apply to subtitle tracks, without which a track decodes to nothing |
 | `PGSStream` | Indexes Blu-ray display sets without decoding, then decodes any cue on demand, compositing multi-object display sets |
 | `VobSubStream` | The same for DVD subpictures, driven by the `.idx` |
 | `IndexedBitmap` | Palette-indexed pixels, rendered either as they look on screen or as ink-on-paper for recognition |
@@ -125,10 +131,16 @@ Two targets. The engine has no user interface and can be used on its own.
 **`macSubtitleOCR-gui`**
 
 `ConversionQueue` is the single source of truth: files, their tracks, the
-options for this run, and the run itself. `NavigationSplitView` shows the
-outline and the cue review; an inspector carries recognition and output
-options. Extracted MKV tracks are cached under `~/Library/Caches`, so
-reopening a file is instant.
+options for this run, and the run itself. The window is a `VSplitView`: a
+`Table` of files and their tracks on top, the cue review below it, and a
+status bar that is always there. An inspector carries recognition and output
+options. Every fixed measurement lives in `MainWindowLayout`, derived from the
+columns and panes it has to hold rather than chosen by eye.
+
+While a track is being recognized the next one is already being read, because
+a subtitle track's blocks are spread across the whole film and recognition
+needs the disk for nothing. Extracted MKV tracks are cached under
+`~/Library/Caches`, so reopening a file is instant.
 
 The design rationale is in
 [`docs/specs/2026-09-09-v1-native-app-design.md`](docs/specs/2026-09-09-v1-native-app-design.md).
@@ -179,10 +191,11 @@ animation are the usual trouble. Flagged cues are where to look first.
 
 ### Where do my SRT files go?
 
-Next to the source file by default, so `~/Movies/MyFilm.mkv` produces
-`~/Movies/MyFilm.eng.srt`. Choose a different folder in Settings or the
-inspector. Track names are folded into the filename, so SDH, commentary, and
-sing-along variants never collide.
+Next to the film by default, so `~/Movies/MyFilm.mkv` produces
+`~/Movies/MyFilm.eng.srt`. The toolbar menu next to the play button changes
+that: pick a folder, or choose *Ask each time* and a folder chooser appears
+before each run. Track names are folded into the filename, so SDH, commentary,
+and sing-along variants never collide.
 
 ### Does anything leave my Mac?
 

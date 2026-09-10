@@ -23,6 +23,36 @@ Not ported: the command-line front end (`macSubtitleOCR.swift`,
 `macSubtitleOCROptions.swift`), JSON output, PNG dumping, the optional FFmpeg
 decoder, and `swift-argument-parser`.
 
+## Written here, with no upstream counterpart
+
+| Here | Why |
+|---|---|
+| `Container/MatroskaCues.swift` | Reads the file's `Cues` index, so pulling one subtitle track out of a 30 GB remux touches the clusters that hold it rather than the whole file. Found either before the clusters or through the `SeekHead`. An index that names clusters but yields no subtitles is treated as stale and the file is read in full instead. |
+| `Container/ContentCompression.swift` | Matroska `ContentEncodings`. Remuxers routinely deflate subtitle frames, and without this the decoder is handed compressed bytes and finds nothing at all. Handles zlib (algorithm 0) and header stripping (algorithm 3); an encrypted track is reported rather than silently empty. |
+| `extract(trackNumbers:orAlso:)` in `MKVReader+Extract.swift` | Whether the index helps and where the blocks are is one question, asked once. When the index cannot reach a track, every track costs a full pass, so the others are taken in the same pass. |
+| `VobSubPacket.timing(_:offset:nextOffset:)` | Building the cue list reads only the control block at the end of each subpicture. Upstream reassembles the whole subpicture to read its timings and then does it again to draw one. |
+
+## Behaviour that differs from upstream
+
+These are fixes, not preferences. Each has a test.
+
+- **Timestamp conversion.** Nanoseconds to 90 kHz ticks multiplies before it
+  divides. Dividing first quantizes every timestamp to nine-tick steps for any
+  `TimestampScale` that is not a multiple of 100 000.
+- **Palette-only display sets.** A PGS composition that only updates the
+  palette no longer ends the open cue, which used to produce empty cues.
+- **Unknown-size elements** resolve iteratively; the recursive form overflowed
+  the stack on a 120 KB file.
+- **Values read from a file saturate rather than trap** — track numbers,
+  cluster timestamps, timestamp scales, `.idx` timestamps, SRT hours, and PGS
+  object dimensions. A crafted file makes a bad subtitle, not a crash.
+- **`Data.mapped` maps unconditionally on local volumes.** Foundation's
+  "if safe" declines on most external drives, and declining means copying the
+  file into memory: 58.7 seconds and 1.4 GB on a 30 GB remux, against 0.011
+  seconds and 6 MB. Files on network shares are read rather than mapped,
+  because there every page fault is a round trip and a dropped share raises a
+  signal nothing can catch.
+
 ## Keeping up with upstream
 
 ```sh
