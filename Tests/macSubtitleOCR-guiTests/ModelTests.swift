@@ -326,3 +326,32 @@ private let fixtures = URL(fileURLWithPath: #filePath)
         #expect(queue.runState == .idle)
     }
 }
+
+@Suite struct RecognizeSubtitlesIntentTests {
+    private let tracks = [
+        TrackInfo(id: 1, format: .pgs, language: "eng", isDefault: true),
+        TrackInfo(id: 2, format: .pgs, language: "eng", name: "SDH"),
+        TrackInfo(id: 3, format: .vobsub, language: "jpn"),
+        TrackInfo(id: 4, format: .pgs, language: "eng", isForced: true),
+    ]
+
+    @Test func selectsEveryTrackMatchingTheLanguages() {
+        let chosen = RecognizeSubtitlesIntent.select(from: tracks, languages: ["en"], choice: .matchingLanguage)
+        #expect(chosen.map(\.id) == [1, 2, 4])
+    }
+
+    @Test func fallsBackToTheDefaultTrack() {
+        let chosen = RecognizeSubtitlesIntent.select(from: tracks, languages: ["fr"], choice: .matchingLanguage)
+        #expect(chosen.map(\.id) == [1])
+    }
+
+    @Test func honoursAllAndDefaultOnly() {
+        #expect(RecognizeSubtitlesIntent.select(from: tracks, languages: ["en"], choice: .all).count == 4)
+        #expect(RecognizeSubtitlesIntent.select(from: tracks, languages: ["en"], choice: .defaultOnly).map(\.id) == [1])
+    }
+
+    @Test func emptyTrackListSelectsNothing() {
+        #expect(RecognizeSubtitlesIntent.select(from: [], languages: ["en"], choice: .matchingLanguage).isEmpty)
+        #expect(RecognizeSubtitlesIntent.select(from: [], languages: ["en"], choice: .defaultOnly).isEmpty)
+    }
+}

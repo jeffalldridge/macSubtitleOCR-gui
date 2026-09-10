@@ -1,36 +1,32 @@
 #!/usr/bin/env bash
 #
-# Assemble a public-distribution `.app` bundle.
+# Assemble the distributable `.app` bundle.
 #
-# Inputs (env vars, all optional):
-#   DEV_ID          — Developer ID Application identity (e.g.
-#                     "Developer ID Application: Jeff Alldridge (TEAMID)").
-#                     When set, the app is signed with this identity and
-#                     hardened runtime is enabled, ready for notarization.
-#                     When unset, falls back to ad-hoc signing for local
-#                     development.
+# The app is entirely self-contained: one universal Mach-O executable, an
+# icon, and an Info.plist. Nothing is shelled out to at runtime, so there is
+# no dylib relocation, no embedded CLI, and no Homebrew dependency.
 #
-# Output:
-#   $1 — path to the .app bundle to assemble (e.g. build/macSubtitleOCR-gui.app)
+# Inputs (environment):
+#   DEV_ID  Developer ID Application identity, e.g.
+#           "Developer ID Application: Jeff Alldridge (TEAMID)". When set, the
+#           bundle is signed with a hardened runtime, ready for notarization.
+#           When unset, it is ad-hoc signed for local use.
 #
-# This bundle is intentionally MIT-licensed and slim:
-#   - Contains our SwiftUI binary and the upstream `macSubtitleOCR` (MIT)
-#   - Does NOT bundle MKVToolNix (GPL-2.0-or-later); users install it via
-#     Homebrew at runtime. See THIRD_PARTY_LICENSES.md for rationale.
+# Usage:
+#   Scripts/make-app.sh build/macSubtitleOCR-gui.app
 #
 set -euo pipefail
 
 APP="${1:?usage: make-app.sh <path/to/MyApp.app>}"
 EXEC_NAME="macSubtitleOCR-gui"
 
-APP_EXEC=".build/release/${EXEC_NAME}"
-EMBEDDED_OCR="Sources/macSubtitleOCR-gui/Resources/macSubtitleOCR"
+BIN_DIR="$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)"
+APP_EXEC="${BIN_DIR}/${EXEC_NAME}"
 INFO_PLIST="Resources/Info.plist"
 ENTITLEMENTS="Resources/macSubtitleOCR-gui.entitlements"
-ICON_SRC="Resources/icon.icon"
-SVG_SRC="${ICON_SRC}/Assets/captions.bubble 2.svg"
+ICON_SRC="Resources/AppIcon.icon"
 
-for f in "$APP_EXEC" "$EMBEDDED_OCR" "$INFO_PLIST" "$ENTITLEMENTS" "$SVG_SRC"; do
+for f in "$APP_EXEC" "$INFO_PLIST" "$ENTITLEMENTS" "$ICON_SRC"; do
     if [[ ! -e "$f" ]]; then
         echo "Error: missing $f. Run 'make build' first." >&2
         exit 1
@@ -39,87 +35,77 @@ done
 
 echo "==> Assembling $APP"
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS"
-mkdir -p "$APP/Contents/Resources"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
-cp "$APP_EXEC"     "$APP/Contents/MacOS/${EXEC_NAME}"
-cp "$EMBEDDED_OCR" "$APP/Contents/Resources/macSubtitleOCR"
-cp "$INFO_PLIST"   "$APP/Contents/Info.plist"
+cp "$APP_EXEC"   "$APP/Contents/MacOS/${EXEC_NAME}"
+cp "$INFO_PLIST" "$APP/Contents/Info.plist"
 chmod +x "$APP/Contents/MacOS/${EXEC_NAME}"
-chmod +x "$APP/Contents/Resources/macSubtitleOCR"
 
-ICNS_DST="$APP/Contents/Resources/icon.icns"
-echo "==> Building icon.icns from Icon Composer SVG"
-swift Scripts/build-icns.swift "$SVG_SRC" "$ICNS_DST"
-if [[ ! -s "$ICNS_DST" ]]; then
-    echo "Error: icon.icns was not produced or is empty." >&2
-    exit 1
-fi
-
-# Also ship the Icon Composer source for macOS 26+ Launch Services.
-cp -R "$ICON_SRC" "$APP/Contents/Resources/icon.icon"
-
-# --- Sign ---
-# Production: Developer ID + hardened runtime + entitlements (notarization-ready)
-# Dev: ad-hoc signing (local-only, won't notarize)
-if [[ -n "${DEV_ID:-}" ]]; then
-    echo "==> Signing with Developer ID + hardened runtime"
-    SIGN_FLAGS=(--force --options runtime --timestamp
-                --entitlements "$ENTITLEMENTS"
-                --sign "$DEV_ID")
-
-    # Sign nested binaries first (they get sealed into the outer signature)
-    codesign "${SIGN_FLAGS[@]}" "$APP/Contents/Resources/macSubtitleOCR"
-    codesign "${SIGN_FLAGS[@]}" "$APP/Contents/MacOS/${EXEC_NAME}"
-    codesign "${SIGN_FLAGS[@]}" "$APP"
-else
-    echo "==> Signing ad-hoc (local dev; set DEV_ID for notarization-ready build)"
-    codesign --force --sign - "$APP/Contents/Resources/macSubtitleOCR"
-    codesign --force --sign - "$APP/Contents/MacOS/${EXEC_NAME}"
-    codesign --force --sign - "$APP"
-fi
-
-# --- Verify ---
-echo "==> Verifying bundle"
-codesign --verify --verbose=1 "$APP" >/dev/null
-if [[ -n "${DEV_ID:-}" ]]; then
-    # Gatekeeper rejects a Developer ID app that has not been notarized yet,
-    # which is the expected state at this point -- notarization and stapling
-    # happen afterwards in `make notarize`. Report the verdict but never fail
-    # on it; `make notarize` asserts acceptance once the ticket is stapled.
-    echo "==> Gatekeeper assessment (pre-notarization, informational)"
-    spctl --assess --type execute --verbose=1 "$APP" 2>&1 | head -1 || true
-else
-    echo "==> Skipping Gatekeeper assessment for ad-hoc local build"
-fi
-
-# --- Self-check (regression guard for issue #3) ---
-# The app must resolve everything it needs from inside the bundle. SwiftPM's
-# generated `Bundle.module` accessor falls back to an absolute path inside this
-# machine's .build directory, which exists here and on CI but never on a user's
-# Mac — that discrepancy is exactly why the "Run OCR" crash shipped unnoticed.
-# Hide that directory for the duration so we test what an end user actually gets.
-SPM_BUNDLE="$(ls -d .build/*/release/macSubtitleOCR-gui_macSubtitleOCR-gui.bundle 2>/dev/null | head -1 || true)"
-
-restore_spm_bundle() {
-    if [[ -n "${SPM_BUNDLE:-}" && -d "${SPM_BUNDLE}.selfcheck-hidden" ]]; then
-        mv "${SPM_BUNDLE}.selfcheck-hidden" "$SPM_BUNDLE"
+# --- Universal check ---
+# A single-architecture build still runs on the build machine, so this would
+# otherwise only surface when an Intel user opens the release.
+archs="$(lipo -archs "$APP/Contents/MacOS/${EXEC_NAME}")"
+echo "==> Executable architectures: $archs"
+for want in arm64 x86_64; do
+    if [[ "$archs" != *"$want"* ]]; then
+        echo "Error: the executable is missing the $want slice (got: $archs)." >&2
+        echo "       Build with: swift build -c release --arch arm64 --arch x86_64" >&2
+        exit 1
     fi
-}
-trap restore_spm_bundle EXIT
+done
 
-if [[ -n "$SPM_BUNDLE" ]]; then
-    mv "$SPM_BUNDLE" "${SPM_BUNDLE}.selfcheck-hidden"
-fi
+# --- Icon ---
+# Icon Composer sources compile to an Assets.car (Liquid Glass on macOS 26)
+# plus a classic .icns for everything older.
+echo "==> Compiling $ICON_SRC"
+ICON_TMP="$(mktemp -d)"
+trap 'rm -rf "$ICON_TMP"' EXIT
+xcrun actool "$ICON_SRC" \
+    --compile "$ICON_TMP" \
+    --platform macosx \
+    --minimum-deployment-target 15.0 \
+    --app-icon AppIcon \
+    --output-partial-info-plist "$ICON_TMP/partial.plist" \
+    --output-format human-readable-text >/dev/null
 
-echo "==> Self-check (simulating a clean end-user machine)"
-if ! "$APP/Contents/MacOS/${EXEC_NAME}" --self-check; then
-    echo "Error: the assembled app failed its self-check; it is not self-contained." >&2
-    exit 1
-fi
-
-restore_spm_bundle
+for asset in Assets.car AppIcon.icns; do
+    if [[ ! -s "$ICON_TMP/$asset" ]]; then
+        echo "Error: actool did not produce $asset." >&2
+        exit 1
+    fi
+    cp "$ICON_TMP/$asset" "$APP/Contents/Resources/$asset"
+done
+rm -rf "$ICON_TMP"
 trap - EXIT
 
+# --- Sign ---
+if [[ -n "${DEV_ID:-}" ]]; then
+    echo "==> Signing with Developer ID + hardened runtime"
+    codesign --force --options runtime --timestamp \
+             --entitlements "$ENTITLEMENTS" \
+             --sign "$DEV_ID" "$APP"
+else
+    echo "==> Signing ad-hoc (local dev; set DEV_ID for a notarization-ready build)"
+    codesign --force --entitlements "$ENTITLEMENTS" --sign - "$APP"
+fi
+
+echo "==> Verifying signature"
+codesign --verify --deep --strict --verbose=1 "$APP" >/dev/null
+
+if [[ -n "${DEV_ID:-}" ]]; then
+    # Gatekeeper rejects a Developer ID app that has not been notarized yet,
+    # which is the expected state here — notarization happens next, in
+    # `make notarize`. Report the verdict but never fail on it.
+    echo "==> Gatekeeper assessment (pre-notarization, informational)"
+    spctl --assess --type execute --verbose=1 "$APP" 2>&1 | head -1 || true
+fi
+
+# --- Self-check ---
+# Runs the assembled bundle to confirm it is complete: Info.plist keys, icon
+# assets, and a real decode through the engine. Packaging bugs do not show up
+# in unit tests, which run inside the build tree.
+echo "==> Self-check"
+"$APP/Contents/MacOS/${EXEC_NAME}" --self-check
+
 size=$(du -sh "$APP" | awk '{print $1}')
-echo "==> Built $APP ($size)"
+echo "==> Built $APP ($size, $archs)"

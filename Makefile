@@ -1,42 +1,37 @@
-.PHONY: build run app dmg package-dmg notarize notarize-dmg submit-dmg-notarization release update clean test
+.PHONY: build run test app dmg package-dmg notarize submit-dmg-notarization notarize-dmg release diff-upstream clean
 
 SWIFT       ?= swift
-VENDOR      := Vendor/macSubtitleOCR
-EMBEDDED    := Sources/macSubtitleOCR-gui/Resources/macSubtitleOCR
 APP_NAME    := macSubtitleOCR-gui
 APP_BUNDLE  := build/$(APP_NAME).app
 DMG_PATH    := build/$(APP_NAME).dmg
+ARCHS       := --arch arm64 --arch x86_64
 
 # Read the version from Info.plist so `make release` tags consistently.
 VERSION := $(shell /usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Resources/Info.plist 2>/dev/null || echo "0.0.0")
 
 # Notarization profile name (created via `xcrun notarytool store-credentials`).
-# Override per-environment if needed.
 NOTARY_PROFILE ?= macSubtitleOCR-gui
 
 # ---------------------------------------------------------------------------
-# Build pipeline
+# Build
+#
+# Everything is Swift: the Matroska reader, the PGS and VobSub decoders, and
+# the Vision recognition all live in the SubtitleEngine target. There is no
+# submodule to build and no binary to embed.
 # ---------------------------------------------------------------------------
 
-build: $(EMBEDDED)
-	$(SWIFT) build -c release
+build:
+	$(SWIFT) build -c release $(ARCHS)
 
-$(EMBEDDED): $(VENDOR)/Package.swift
-	@echo "==> Building upstream macSubtitleOCR"
-	cd $(VENDOR) && $(SWIFT) build -c release
-	@mkdir -p $(dir $(EMBEDDED))
-	cp $(VENDOR)/.build/release/macSubtitleOCR $(EMBEDDED)
-	@echo "==> Embedded binary at $(EMBEDDED)"
-
-run: build
-	$(SWIFT) run -c release $(APP_NAME)
+run:
+	$(SWIFT) run $(APP_NAME)
 
 test:
 	$(SWIFT) test
 
 # ---------------------------------------------------------------------------
-# `.app` bundle (3.6 MB, MIT-licensed). Pass DEV_ID to sign with a Developer
-# ID Application certificate ready for notarization; without it, ad-hoc.
+# `.app` bundle. Pass DEV_ID to sign with a Developer ID Application identity
+# ready for notarization; without it the bundle is ad-hoc signed.
 # ---------------------------------------------------------------------------
 
 app: build Scripts/make-app.sh
@@ -55,7 +50,7 @@ package-dmg:
 	@rm -rf build/dmg-staging/*
 	@cp -R "$(APP_BUNDLE)" build/dmg-staging/
 	@ln -sf /Applications "build/dmg-staging/Applications"
-	hdiutil create -volname "$(APP_NAME) $(VERSION)" \
+	hdiutil create -volname "macSubtitleOCR $(VERSION)" \
 	               -srcfolder build/dmg-staging \
 	               -ov -format UDZO \
 	               "$(DMG_PATH)"
@@ -66,41 +61,15 @@ package-dmg:
 	fi
 	@echo "==> Built $(DMG_PATH) ($$(du -sh "$(DMG_PATH)" | awk '{print $$1}'))"
 
-# Notarize and staple the .dmg itself (separate from the inner .app which is
-# already notarized by `make notarize`). Gives end users a totally warning-free
-# download — even macOS Sequoia's "verify before opening" sheet is bypassed.
-notarize-dmg: dmg
-	$(MAKE) submit-dmg-notarization
-
-submit-dmg-notarization:
-	@if [[ -z "$$DEV_ID" ]]; then \
-	    echo "Error: DEV_ID must be set." >&2; exit 1; \
-	fi
-	@echo "==> Submitting $(DMG_PATH) to Apple notary service"
-	xcrun notarytool submit "$(DMG_PATH)" \
-	    --keychain-profile "$(NOTARY_PROFILE)" \
-	    --wait
-	@echo "==> Stapling notarization ticket to DMG"
-	xcrun stapler staple "$(DMG_PATH)"
-	xcrun stapler validate "$(DMG_PATH)"
-	@echo "==> Notarized $(DMG_PATH)"
-
 # ---------------------------------------------------------------------------
-# Notarization — submits the .app to Apple's notarization service, waits for
-# the result, and staples the ticket so the bundle launches without the
-# "downloaded from internet" warning offline.
+# Notarization — submits to Apple, waits, staples the ticket.
 #
 # One-time setup on the developer's machine:
-#   1) Apple Developer ID Application cert installed in login keychain.
-#   2) An App Store Connect API key (.p8) saved somewhere safe.
-#   3) Run once:
-#        xcrun notarytool store-credentials "$(NOTARY_PROFILE)" \
-#          --key /path/to/AuthKey_XXXX.p8 \
-#          --key-id XXXXXXXXXX \
-#          --issuer YYYYYYYY-YYYY-YYYY-YYYY-YYYYYYYYYYYY
+#   1) Developer ID Application certificate in the login keychain.
+#   2) An App Store Connect API key (.p8).
+#   3) xcrun notarytool store-credentials "$(NOTARY_PROFILE)" \
+#        --key /path/to/AuthKey_XXXX.p8 --key-id XXXXXXXXXX --issuer UUID
 #   4) export DEV_ID="Developer ID Application: Your Name (TEAMID)"
-# Then:
-#   make notarize
 # ---------------------------------------------------------------------------
 
 notarize: app
@@ -109,8 +78,6 @@ notarize: app
 	    echo "Example: make notarize DEV_ID=\"Developer ID Application: Jeff Alldridge (TEAMID)\"" >&2; \
 	    exit 1; \
 	fi
-	@echo "==> Re-building app signed with Developer ID + hardened runtime"
-	DEV_ID="$$DEV_ID" bash Scripts/make-app.sh "$(APP_BUNDLE)"
 	@rm -f build/notarize.zip
 	@echo "==> Zipping for notarytool"
 	ditto -c -k --keepParent "$(APP_BUNDLE)" build/notarize.zip
@@ -126,10 +93,24 @@ notarize: app
 	@rm -f build/notarize.zip
 	@echo "==> Notarized $(APP_BUNDLE)"
 
-# ---------------------------------------------------------------------------
-# Full release pipeline: clean build, notarize, build .dmg.
-# ---------------------------------------------------------------------------
+# Notarize and staple the .dmg itself, so even macOS Sequoia's
+# "verify before opening" sheet is skipped.
+notarize-dmg: dmg submit-dmg-notarization
 
+submit-dmg-notarization:
+	@if [[ -z "$$DEV_ID" ]]; then \
+	    echo "Error: DEV_ID must be set." >&2; exit 1; \
+	fi
+	@echo "==> Submitting $(DMG_PATH) to Apple notary service"
+	xcrun notarytool submit "$(DMG_PATH)" \
+	    --keychain-profile "$(NOTARY_PROFILE)" \
+	    --wait
+	@echo "==> Stapling notarization ticket to DMG"
+	xcrun stapler staple "$(DMG_PATH)"
+	xcrun stapler validate "$(DMG_PATH)"
+	@echo "==> Notarized $(DMG_PATH)"
+
+# Full release pipeline: clean build, notarize, package, notarize the dmg.
 release: clean notarize
 	$(MAKE) package-dmg
 	$(MAKE) submit-dmg-notarization
@@ -140,17 +121,11 @@ release: clean notarize
 # Maintenance
 # ---------------------------------------------------------------------------
 
-update:
-	@echo "==> Fetching latest macSubtitleOCR"
-	git -C $(VENDOR) fetch --tags origin
-	git -C $(VENDOR) checkout origin/main
-	@rm -f $(EMBEDDED)
-	$(MAKE) build
-	@echo "==> Submodule bumped. Review and commit:"
-	@git status -- $(VENDOR)
+# Show what upstream macSubtitleOCR has changed in the decoders since the
+# commit this engine was ported from. Override the ref with REF=v1.1.0.
+diff-upstream:
+	bash Scripts/diff-upstream.sh $(REF)
 
 clean:
 	$(SWIFT) package clean
 	rm -rf .build build
-	rm -f $(EMBEDDED)
-	-cd $(VENDOR) && $(SWIFT) package clean 2>/dev/null || true

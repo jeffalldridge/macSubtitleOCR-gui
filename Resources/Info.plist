@@ -3,30 +3,164 @@
 <plist version="1.0">
 <dict>
   <key>CFBundleName</key>
-  <string>macSubtitleOCR-gui</string>
+  <string>macSubtitleOCR</string>
   <key>CFBundleDisplayName</key>
   <string>macSubtitleOCR</string>
   <key>CFBundleIdentifier</key>
   <string>com.tentstudios.macSubtitleOCR-gui</string>
   <key>CFBundleVersion</key>
-  <string>0.2.0</string>
+  <string>1.0.0</string>
   <key>CFBundleShortVersionString</key>
-  <string>0.2.0</string>
-  <key>NSHumanReadableCopyright</key>
-  <string>© 2026 Jeff Alldridge / Tent Studios, LLC. macSubtitleOCR © Ethan Dye, MIT License.</string>
+  <string>1.0.0</string>
   <key>CFBundleExecutable</key>
   <string>macSubtitleOCR-gui</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
+  <key>NSHumanReadableCopyright</key>
+  <string>© 2026 Jeff Alldridge / Tent Studios, LLC. Recognition engine derived from macSubtitleOCR © Ethan Dye, MIT License.</string>
   <key>LSMinimumSystemVersion</key>
-  <string>14.0</string>
+  <string>15.0</string>
+  <key>LSApplicationCategoryType</key>
+  <string>public.app-category.video</string>
   <key>NSHighResolutionCapable</key>
   <true/>
   <key>NSPrincipalClass</key>
   <string>NSApplication</string>
+  <key>NSSupportsAutomaticTermination</key>
+  <true/>
+  <key>NSSupportsSuddenTermination</key>
+  <false/>
+
   <key>CFBundleIconFile</key>
-  <string>icon.icns</string>
+  <string>AppIcon</string>
   <key>CFBundleIconName</key>
-  <string>icon</string>
+  <string>AppIcon</string>
+
+  <!-- Bitmap subtitle types this app understands. Declared as imported so
+       Launch Services knows what .sup / .sub / .idx are; ranked Alternate so
+       the app appears in Open With without claiming other tools' documents. -->
+  <key>UTImportedTypeDeclarations</key>
+  <array>
+    <dict>
+      <key>UTTypeIdentifier</key>
+      <string>com.blu-ray.pgs-subtitle</string>
+      <key>UTTypeDescription</key>
+      <string>Blu-ray PGS Subtitles</string>
+      <key>UTTypeConformsTo</key>
+      <array>
+        <string>public.data</string>
+      </array>
+      <key>UTTypeTagSpecification</key>
+      <dict>
+        <key>public.filename-extension</key>
+        <array>
+          <string>sup</string>
+        </array>
+      </dict>
+    </dict>
+    <dict>
+      <key>UTTypeIdentifier</key>
+      <string>org.dvd.vobsub-subtitle</string>
+      <key>UTTypeDescription</key>
+      <string>VobSub Subtitles</string>
+      <key>UTTypeConformsTo</key>
+      <array>
+        <string>public.data</string>
+      </array>
+      <key>UTTypeTagSpecification</key>
+      <dict>
+        <key>public.filename-extension</key>
+        <array>
+          <string>sub</string>
+        </array>
+      </dict>
+    </dict>
+    <dict>
+      <key>UTTypeIdentifier</key>
+      <string>org.dvd.vobsub-index</string>
+      <key>UTTypeDescription</key>
+      <string>VobSub Index</string>
+      <key>UTTypeConformsTo</key>
+      <array>
+        <string>public.text</string>
+      </array>
+      <key>UTTypeTagSpecification</key>
+      <dict>
+        <key>public.filename-extension</key>
+        <array>
+          <string>idx</string>
+        </array>
+      </dict>
+    </dict>
+  </array>
+
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>Matroska Video</string>
+      <key>CFBundleTypeRole</key>
+      <string>Viewer</string>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>mkv</string>
+        <string>mks</string>
+      </array>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>org.matroska.mkv</string>
+      </array>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>Bitmap Subtitles</string>
+      <key>CFBundleTypeRole</key>
+      <string>Viewer</string>
+      <key>LSHandlerRank</key>
+      <string>Alternate</string>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>sup</string>
+        <string>sub</string>
+        <string>idx</string>
+      </array>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>com.blu-ray.pgs-subtitle</string>
+        <string>org.dvd.vobsub-subtitle</string>
+        <string>org.dvd.vobsub-index</string>
+      </array>
+    </dict>
+  </array>
+
+  <!-- Finder ▸ Services entry, handled by ServicesProvider. -->
+  <key>NSServices</key>
+  <array>
+    <dict>
+      <key>NSMenuItem</key>
+      <dict>
+        <key>default</key>
+        <string>Recognize Subtitles</string>
+      </dict>
+      <key>NSMessage</key>
+      <string>recognizeSubtitles</string>
+      <key>NSPortName</key>
+      <string>macSubtitleOCR</string>
+      <key>NSRequiredContext</key>
+      <dict>
+        <key>NSTextContent</key>
+        <string>FilePath</string>
+      </dict>
+      <key>NSSendFileTypes</key>
+      <array>
+        <string>org.matroska.mkv</string>
+        <string>com.blu-ray.pgs-subtitle</string>
+        <string>org.dvd.vobsub-subtitle</string>
+        <string>org.dvd.vobsub-index</string>
+      </array>
+    </dict>
+  </array>
 </dict>
 </plist>

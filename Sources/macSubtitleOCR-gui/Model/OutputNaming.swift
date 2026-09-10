@@ -5,7 +5,7 @@ import SubtitleEngine
 ///
 /// `<base>.<lang>[.<sanitized-track-name>].srt`, e.g. `Film.eng.srt` or
 /// `Film.eng.english-sdh.srt`, so SDH and commentary tracks never collide.
-enum OutputNaming {
+nonisolated enum OutputNaming {
     /// The language code used in filenames: the track's, else the fallback,
     /// as an ISO 639-2 three-letter code.
     static func languageCode(for track: TrackInfo, fallback: String?) -> String? {
