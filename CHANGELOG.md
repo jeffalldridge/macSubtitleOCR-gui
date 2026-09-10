@@ -6,6 +6,27 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **The window is one column, not two.** The file list was a sidebar taking a
+  quarter of the width from the cue review, which is the part of the app that
+  needs it: a subtitle image and its text side by side. The queue is now a
+  table across the top of the window, with the review below it and a divider
+  the user can drag. Every file and track is visible at once with its language,
+  cue count, and what it is doing.
+- **The status bar is always there.** It used to appear when a run started,
+  which resized the window at the least helpful moment. It now shows what is
+  queued when idle, progress while running, and the result when finished.
+- **Track status says what it means.** Each row shows an icon and a word rather
+  than an icon alone, and colour is rationed: green only for a subtitle file
+  that is written and needs nothing, orange for something to look at, red for
+  something that did not happen.
+- **Search and the review filter moved into the track header**, next to the
+  cue list they filter, rather than the window toolbar which now belongs to the
+  queue. Find (⌘F) puts the cursor in the search field.
+- **Remove (⌘⌫)** takes the selected file out of the queue, from the toolbar or
+  the File menu.
+
 ### Fixed
 
 - **Opening a large file took a minute.** Foundation's "map the file if it is

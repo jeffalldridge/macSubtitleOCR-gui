@@ -43,9 +43,19 @@ struct AppCommands: Commands {
                 .keyboardShortcut("k", modifiers: [.command, .shift])
                 .disabled(queue.isEmpty || queue.isRunning)
 
+            Button("Remove Selected File") { removeSelectedFile() }
+                .keyboardShortcut(.delete, modifiers: [.command])
+                .disabled(selectedFile == nil || queue.isRunning)
+
             Button("Reveal in Finder") { reveal() }
                 .keyboardShortcut("r", modifiers: [.command, .shift])
                 .disabled(revealURLs.isEmpty)
+        }
+
+        CommandGroup(after: .textEditing) {
+            Button("Find") { ui.focusSearchRequests += 1 }
+                .keyboardShortcut("f")
+                .disabled(queue.selectedTrack == nil)
         }
 
         CommandMenu("Track") {
@@ -87,6 +97,19 @@ struct AppCommands: Commands {
             Divider()
             Button("Acknowledgements") { openWindow(id: AcknowledgementsView.windowID) }
         }
+    }
+
+    /// What Remove would act on: the selected file, or the one holding the
+    /// selected track.
+    private var selectedFile: QueueFile? {
+        if let file = queue.selectedFile { return file }
+        if let track = queue.selectedTrack { return queue.file(for: track) }
+        return nil
+    }
+
+    private func removeSelectedFile() {
+        guard let selectedFile else { return }
+        queue.remove(selectedFile)
     }
 
     private var revealURLs: [URL] {

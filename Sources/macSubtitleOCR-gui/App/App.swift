@@ -91,4 +91,7 @@ struct MacSubtitleOCRApp: App {
 final class AppUIState {
     var isInspectorPresented = false
     var showNeedsReviewOnly = false
+    /// Bumped by the Find command. The cue search field watches it and takes
+    /// focus, which is how a menu item reaches a field it cannot see.
+    var focusSearchRequests = 0
 }

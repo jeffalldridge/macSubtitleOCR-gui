@@ -12,7 +12,7 @@ struct CuePreviewView: View {
                 .fill(Color(red: 0.11, green: 0.11, blue: 0.12))
 
             if let cueIndex, let cue = cueInfo(cueIndex) {
-                VStack(spacing: 8) {
+                VStack(spacing: CuePreviewLayout.captionSpacing) {
                     Group {
                         if let image {
                             Image(decorative: image, scale: 1)
@@ -24,7 +24,7 @@ struct CuePreviewView: View {
                             ProgressView().controlSize(.small)
                         }
                     }
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, CuePreviewLayout.imageInset)
                     .padding(.top, 14)
 
                     HStack(spacing: 10) {

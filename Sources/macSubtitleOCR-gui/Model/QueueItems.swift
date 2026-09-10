@@ -169,3 +169,10 @@ enum SidebarSelection: Hashable {
     case file(UUID)
     case track(UUID)
 }
+
+extension QueueFile {
+    var hasFailed: Bool {
+        if case .failed = state { return true }
+        return false
+    }
+}

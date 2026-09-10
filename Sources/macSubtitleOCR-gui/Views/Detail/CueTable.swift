@@ -13,27 +13,33 @@ struct CueTable: View {
             TableColumn("") { row in
                 ReviewFlag(cue: row.cue)
             }
-            .width(22)
+            .width(CueTableLayout.flagWidth)
 
             TableColumn("#") { row in
                 Text("\(row.info.index + 1)")
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
-            .width(min: 34, ideal: 44, max: 60)
+            .width(min: CueTableLayout.numberMinimumWidth,
+                   ideal: CueTableLayout.numberIdealWidth,
+                   max: CueTableLayout.numberMaximumWidth)
 
             TableColumn("Image") { row in
                 CueThumbnail(track: track, index: row.info.index)
-                    .frame(height: 40)
+                    .frame(height: CueTableLayout.thumbnailHeight)
             }
-            .width(min: 120, ideal: 220, max: 420)
+            .width(min: CueTableLayout.imageMinimumWidth,
+                   ideal: CueTableLayout.imageIdealWidth,
+                   max: CueTableLayout.imageMaximumWidth)
 
             TableColumn("Time") { row in
                 Text(timeLabel(row))
                     .font(.system(.body, design: .monospaced))
                     .foregroundStyle(.secondary)
             }
-            .width(min: 120, ideal: 190, max: 230)
+            .width(min: CueTableLayout.timeMinimumWidth,
+                   ideal: CueTableLayout.timeIdealWidth,
+                   max: CueTableLayout.timeMaximumWidth)
 
             TableColumn("Text") { row in
                 if let cue = row.cue {
@@ -42,6 +48,7 @@ struct CueTable: View {
                     Text("—").foregroundStyle(.tertiary)
                 }
             }
+            .width(min: CueTableLayout.textMinimumWidth)
         }
         .tableStyle(.inset)
         .accessibilityLabel("Cues")

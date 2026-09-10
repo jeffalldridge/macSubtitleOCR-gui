@@ -23,23 +23,12 @@ struct TrackDetailView: View {
             header
             Divider()
             CuePreviewView(track: track, cueIndex: selectedCue)
-                .frame(height: 190)
+                .frame(height: CuePreviewLayout.height)
             Divider()
             content
         }
         .navigationTitle(track.title)
         .navigationSubtitle(subtitle)
-        .searchable(text: $search, placement: .toolbar, prompt: "Search cues")
-        .toolbar {
-            ToolbarItem {
-                Toggle(isOn: $ui.showNeedsReviewOnly) {
-                    Label("Needs Review", systemImage: "exclamationmark.triangle")
-                }
-                .toggleStyle(.button)
-                .help("Show only cues that need a look (⌥⌘E)")
-                .disabled(!track.hasResults)
-            }
-        }
         .task(id: track.id) {
             queue.loadStreamIfNeeded(for: track)
         }
@@ -57,16 +46,24 @@ struct TrackDetailView: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(track.title).font(.title3.weight(.semibold))
+        @Bindable var ui = ui
+        return HStack(alignment: .firstTextBaseline, spacing: DetailPaneMetrics.horizontalPadding * 0.75) {
+            VStack(alignment: .leading, spacing: DetailPaneMetrics.stackSpacing) {
+                HStack(spacing: DetailPaneMetrics.titleSpacing) {
+                    Text(track.title)
+                        .font(.title3.weight(.semibold))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .help(track.title)
                     if track.info.isDefault { Badge(text: "Default") }
                     if track.info.isForced { Badge(text: "Forced", tint: .orange) }
                 }
                 Text(statusLine)
                     .font(.callout)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .help(statusLine)
                 if !track.issues.isEmpty {
                     DisclosureGroup {
                         ForEach(track.issues, id: \.self) { issue in
@@ -78,21 +75,37 @@ struct TrackDetailView: View {
                     }
                 }
             }
-            Spacer()
-            if let output = track.outputURL {
-                Button {
-                    NSWorkspace.shared.activateFileViewerSelecting([output])
-                } label: {
-                    Label("Reveal in Finder", systemImage: "folder")
+            Spacer(minLength: DetailPaneMetrics.horizontalPadding)
+
+            HStack(spacing: DetailPaneMetrics.titleSpacing) {
+                CueSearchField(text: $search)
+                    .disabled(track.stream == nil)
+
+                Toggle(isOn: $ui.showNeedsReviewOnly) {
+                    Label("Needs Review", systemImage: "exclamationmark.triangle")
+                        .labelStyle(.iconOnly)
                 }
-                .help(output.path(percentEncoded: false))
+                .toggleStyle(.button)
+                .help("Show only cues that need a look (⌥⌘E)")
+                .disabled(!track.hasResults)
+
+                if let output = track.outputURL {
+                    Button {
+                        NSWorkspace.shared.activateFileViewerSelecting([output])
+                    } label: {
+                        Label("Reveal in Finder", systemImage: "folder")
+                            .labelStyle(.iconOnly)
+                    }
+                    .help(output.path(percentEncoded: false))
+                }
+                if track.hasResults {
+                    TrackActionsMenu(track: track, file: file)
+                }
             }
-            if track.hasResults {
-                TrackActionsMenu(track: track, file: file)
-            }
+            .fixedSize(horizontal: true, vertical: false)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, DetailPaneMetrics.horizontalPadding)
+        .padding(.vertical, DetailPaneMetrics.verticalPadding)
     }
 
     private var subtitle: String {
@@ -201,6 +214,47 @@ struct TrackDetailView: View {
             guard !Task.isCancelled else { return }
             queue.saveEdits(for: track)
         }
+    }
+}
+
+/// The cue search field.
+///
+/// It sits in the detail header rather than the window toolbar: the toolbar
+/// belongs to the queue above, and a field that filters the list directly
+/// beneath it is easier to connect to what it does.
+struct CueSearchField: View {
+    @Binding var text: String
+    @Environment(AppUIState.self) private var ui
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+            TextField("Search cues", text: $text)
+                .textFieldStyle(.plain)
+                .focused($focused)
+                .frame(width: CueSearchLayout.width)
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                    focused = true
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .help("Clear the search")
+                .accessibilityLabel("Clear the search")
+            }
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 6))
+        .onChange(of: ui.focusSearchRequests) { _, _ in focused = true }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Search cues")
     }
 }
 

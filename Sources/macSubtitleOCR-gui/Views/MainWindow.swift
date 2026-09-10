@@ -1,5 +1,12 @@
 import SwiftUI
 
+/// The main window: the queue above, what the selection calls for below, and
+/// a status bar that is always there.
+///
+/// The queue used to be a sidebar, which cost the cue review a permanent
+/// quarter of the window's width. Reviewing cues means reading a subtitle
+/// image beside its text, and that wants every pixel across. Stacking the two
+/// gives the review the full width and lets the user set the split.
 struct MainWindow: View {
     static let windowID = "main"
 
@@ -7,35 +14,56 @@ struct MainWindow: View {
     @Environment(AppUIState.self) private var ui
     @Environment(AppSettings.self) private var settings
     @Environment(UpdateChecker.self) private var updates
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var isDropTargeted = false
 
     var body: some View {
         @Bindable var ui = ui
 
-        Group {
+        VStack(spacing: 0) {
             if queue.isEmpty {
-                EmptyStateView(isTargeted: isDropTargeted)
+                EmptyQueueView(isTargeted: isDropTargeted)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                splitView
+                VSplitView {
+                    QueueTableView()
+                        .frame(minHeight: MainWindowLayout.queueMinimumHeight,
+                               idealHeight: MainWindowLayout.queueIdealHeight)
+                    DetailView()
+                        .frame(minHeight: MainWindowLayout.detailMinimumHeight,
+                               idealHeight: MainWindowLayout.detailIdealHeight,
+                               maxHeight: .infinity)
+                }
             }
+            QueueStatusBar()
         }
-        .frame(minWidth: 780, minHeight: 500)
+        .frame(minWidth: MainWindowLayout.minimumWidth,
+               idealWidth: MainWindowLayout.idealWidth,
+               minHeight: MainWindowLayout.minimumHeight,
+               idealHeight: MainWindowLayout.idealHeight)
         .dropDestination(for: URL.self) { urls, _ in
             let expanded = urls.flatMap(FileImport.expand)
             guard !expanded.isEmpty else { return false }
             queue.add(urls: expanded)
             return true
         } isTargeted: { isDropTargeted = $0 }
+        .overlay {
+            if isDropTargeted, !queue.isEmpty {
+                RoundedRectangle(cornerRadius: EmptyQueueLayout.cornerRadius)
+                    .strokeBorder(Color.accentColor, lineWidth: EmptyQueueLayout.dropBorderWidth)
+                    .padding(EmptyQueueLayout.dropBorderWidth)
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+            }
+        }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: isDropTargeted)
         .toolbar { toolbar }
         .inspector(isPresented: $ui.isInspectorPresented) {
             InspectorView()
-                .inspectorColumnWidth(min: 260, ideal: 300, max: 380)
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if showsStatusBar {
-                StatusBarView()
-            }
+                .inspectorColumnWidth(min: MainWindowLayout.inspectorMinimumWidth,
+                                      ideal: MainWindowLayout.inspectorIdealWidth,
+                                      max: MainWindowLayout.inspectorMaximumWidth)
         }
         .sensoryFeedback(.success, trigger: queue.finishedRunCount)
         .onChange(of: queue.finishedRunCount) { _, _ in
@@ -49,26 +77,9 @@ struct MainWindow: View {
         }
     }
 
-    private var splitView: some View {
-        NavigationSplitView {
-            SidebarView()
-                .navigationSplitViewColumnWidth(min: 250, ideal: 310, max: 460)
-        } detail: {
-            DetailView()
-        }
-        .overlay {
-            if isDropTargeted {
-                RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(Color.accentColor, lineWidth: 3)
-                    .padding(4)
-                    .allowsHitTesting(false)
-            }
-        }
-    }
-
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
-        ToolbarItem(placement: .navigation) {
+        ToolbarItemGroup(placement: .navigation) {
             Button {
                 FileImport.presentOpenPanel(into: queue)
             } label: {
@@ -76,6 +87,14 @@ struct MainWindow: View {
             }
             .help("Add video or subtitle files (⌘O)")
             .disabled(queue.isRunning)
+
+            Button {
+                removeSelectedFile()
+            } label: {
+                Label("Remove", systemImage: "minus")
+            }
+            .help("Remove the selected file from the queue")
+            .disabled(queue.isRunning || selectedFileForRemoval == nil)
         }
 
         ToolbarItem(placement: .primaryAction) {
@@ -107,15 +126,22 @@ struct MainWindow: View {
         }
     }
 
+    /// The file a Remove would act on: the selected one, or the one holding
+    /// the selected track.
+    private var selectedFileForRemoval: QueueFile? {
+        if let file = queue.selectedFile { return file }
+        if let track = queue.selectedTrack { return queue.file(for: track) }
+        return nil
+    }
+
+    private func removeSelectedFile() {
+        guard let file = selectedFileForRemoval else { return }
+        queue.remove(file)
+    }
+
     private var recognizeLabel: String {
         let count = queue.includedTracks.count
         return count > 1 ? "Recognize \(count) Tracks" : "Recognize"
-    }
-
-    private var showsStatusBar: Bool {
-        if queue.isRunning { return true }
-        if case .finished = queue.runState { return true }
-        return updates.available != nil
     }
 
     private func runDidFinish() {

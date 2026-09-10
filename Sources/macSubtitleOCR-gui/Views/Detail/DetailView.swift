@@ -1,7 +1,8 @@
 import AppKit
 import SwiftUI
 
-/// The detail column: a track, a file, or nothing.
+/// The pane below the queue: a track, a file, or an explanation of what to do
+/// next.
 struct DetailView: View {
     @Environment(ConversionQueue.self) private var queue
 
@@ -13,13 +14,16 @@ struct DetailView: View {
             FileDetailView(file: file)
                 .id(file.id)
         } else {
-            ContentUnavailableView("Select a file or track", systemImage: "sidebar.left",
-                                   description: Text("Tick the tracks you want, then click Recognize."))
+            ContentUnavailableView("Select a track to review it",
+                                   systemImage: "list.bullet.rectangle",
+                                   description: Text("Tick the tracks you want in the list above, then click Recognize."))
                 .navigationTitle("macSubtitleOCR")
         }
     }
 }
 
+/// A file's own details. Its tracks are in the queue above, with their
+/// checkboxes, so they are not repeated here.
 struct FileDetailView: View {
     @Environment(ConversionQueue.self) private var queue
     let file: QueueFile
@@ -34,6 +38,7 @@ struct FileDetailView: View {
                             .lineLimit(1)
                             .truncationMode(.middle)
                             .foregroundStyle(.secondary)
+                            .help(file.url.path(percentEncoded: false))
                         Button("Reveal") {
                             NSWorkspace.shared.activateFileViewerSelecting([file.url])
                         }
@@ -51,7 +56,7 @@ struct FileDetailView: View {
                 }
             }
 
-            Section {
+            Section("Subtitle Tracks") {
                 switch file.state {
                 case .probing:
                     HStack {
@@ -65,21 +70,17 @@ struct FileDetailView: View {
                     if file.tracks.isEmpty {
                         Text("This file has no PGS or VobSub subtitle tracks.")
                             .foregroundStyle(.secondary)
-                    }
-                    ForEach(file.tracks) { track in
-                        TrackSummaryRow(track: track)
+                    } else {
+                        LabeledContent("Bitmap tracks", value: trackSummary)
+                        Text("Each included track becomes its own .srt file next to the source, named after its language and track name.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
                     }
                     if !info.otherSubtitleCodecs.isEmpty {
                         Text(otherTracksNote(info.otherSubtitleCodecs))
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     }
-                }
-            } header: {
-                Text("Subtitle Tracks")
-            } footer: {
-                if !file.tracks.isEmpty {
-                    Text("Tick the tracks to recognize. Each one becomes its own .srt file next to the source, named after its language and track name.")
                 }
             }
 
@@ -102,6 +103,13 @@ struct FileDetailView: View {
         .navigationSubtitle(file.summary)
     }
 
+    private var trackSummary: String {
+        let included = file.includedTracks.count
+        let total = file.tracks.count
+        if included == total { return total == 1 ? "1, included" : "\(total), all included" }
+        return "\(included) of \(total) included"
+    }
+
     private var runLabel: String {
         let count = file.includedTracks.count
         return count == 1 ? "Recognize 1 Track" : "Recognize \(count) Tracks"
@@ -114,28 +122,9 @@ struct FileDetailView: View {
             if codec == "S_DVBSUB" { return "DVB bitmap" }
             return codec
         }).sorted().joined(separator: ", ")
-        return "\(count) other subtitle track\(count == 1 ? "" : "s") (\(kinds)) \(count == 1 ? "is" : "are") not bitmap subtitles and \(count == 1 ? "does" : "do") not need recognition."
-    }
-}
-
-private struct TrackSummaryRow: View {
-    @Bindable var track: QueueTrack
-    @Environment(ConversionQueue.self) private var queue
-
-    var body: some View {
-        Toggle(isOn: $track.isIncluded) {
-            HStack(spacing: 8) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(track.title)
-                    Text(track.subtitle).font(.caption).foregroundStyle(.secondary)
-                }
-                Spacer()
-                if track.info.isDefault { Badge(text: "Default") }
-                if track.info.isForced { Badge(text: "Forced", tint: .orange) }
-                TrackStatusView(track: track)
-            }
-        }
-        .toggleStyle(.checkbox)
-        .disabled(queue.isRunning)
+        let noun = count == 1 ? "track" : "tracks"
+        let verb = count == 1 ? "is" : "are"
+        let need = count == 1 ? "does" : "do"
+        return "\(count) other subtitle \(noun) (\(kinds)) \(verb) not bitmap subtitles and \(need) not need recognition."
     }
 }
