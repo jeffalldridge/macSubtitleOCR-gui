@@ -6,90 +6,6 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Added
-
-- **A destination menu in the toolbar**, next to the button that starts the
-  work, so where the subtitle files land is visible at the moment it matters.
-  Next to the film is the default. You can pick a folder, or ask to be asked
-  each time, and the run puts up a folder chooser before it starts.
-- **A play button.** The primary action is a filled play button in the top
-  right, and it becomes Stop in the same place while a run is going.
-
-- **The next track is read while the current one is being recognized.** A
-  subtitle track's blocks are scattered across the whole film, so reading one
-  off an external drive takes seven to fifteen seconds the first time. That
-  now happens behind the recognition of the track before it, which needs the
-  disk for nothing.
-
-### Fixed
-
-- **Crash while scrolling the queue.** Table cells and menus are rendered in
-  their own hosting contexts, and a view that looked up shared state from
-  inside one of those trapped when the state had not travelled with it. Every
-  cell, menu, and toolbar item is handed what it needs now.
-- **Track checkboxes could not be clicked.** The column was narrower than a
-  checkbox plus the padding a table puts around it, so the control was drawn
-  but clipped to almost nothing.
-- **Opening a file re-read its index once per track.** On a remux with
-  twenty-eight subtitle tracks that was fifty-six index walks and fifty-six
-  memory maps for one batch; it is one of each now.
-- **Files on a network share are no longer memory-mapped.** Every page fault
-  was a round trip, and a share that dropped mid-read killed the app outright.
-  Local disks, including external ones, still map.
-- **Revert All Edits can be undone**, like every other edit in the app.
-- **Reset All Settings asks first.**
-- The progress bar can no longer tick backwards.
-- Counts read correctly at one: "1 track, included" rather than "1, included",
-  and a lone text subtitle track is described in the singular.
-- The Recognize button says what is missing when it is disabled.
-- The accept checkbox in the clean-up sheet has an accessibility label.
-- Building the cue list for a VobSub track no longer reassembles every
-  subpicture. Timings live in a control block at the end of each one, and the
-  bitmap in front of it is not read until something asks to see it.
-
-### Changed
-
-- **The window is one column, not two.** The file list was a sidebar taking a
-  quarter of the width from the cue review, which is the part of the app that
-  needs it: a subtitle image and its text side by side. The queue is now a
-  table across the top of the window, with the review below it and a divider
-  the user can drag. Every file and track is visible at once with its language,
-  cue count, and what it is doing.
-- **The status bar is always there.** It used to appear when a run started,
-  which resized the window at the least helpful moment. It now shows what is
-  queued when idle, progress while running, and the result when finished.
-- **Track status says what it means.** Each row shows an icon and a word rather
-  than an icon alone, and colour is rationed: green only for a subtitle file
-  that is written and needs nothing, orange for something to look at, red for
-  something that did not happen.
-- **Search and the review filter moved into the track header**, next to the
-  cue list they filter, rather than the window toolbar which now belongs to the
-  queue. Find (⌘F) puts the cursor in the search field.
-- **Remove (⌘⌫)** takes the selected file out of the queue, from the toolbar or
-  the File menu.
-
-### Fixed
-
-- **Opening a large file took a minute.** Foundation's "map the file if it is
-  safe" decides safety by volume and declines on most external drives — where
-  declining means copying the file into memory instead. On a 30 GB remux on an
-  external drive that was 58.7 seconds and 1.4 GB of RAM before a single byte
-  was parsed. Mapping unconditionally reads the same file's track list in
-  0.027 seconds.
-- **Reading a subtitle track read the whole film.** Matroska files carry an
-  index saying which parts of the file hold each track. The app now follows
-  it, and reads a few hundred megabytes instead of thirty gigabytes. A track
-  that took about fifty-five seconds now takes 0.07 seconds. Files without an
-  index, and indexes that turn out to be wrong, still fall back to reading
-  everything.
-- **Some tracks came out empty.** Remuxers routinely compress subtitle frames,
-  which the reader did not undo, so the decoder was handed deflated bytes and
-  found nothing. Both compression schemes Matroska defines for subtitles are
-  now handled, and an encrypted track says so instead of appearing blank.
-- **The window froze while a file was being read.** The container walk ran on
-  the main actor, so it blocked the interface — including the progress bar
-  that was meant to show it working.
-
 ## [1.0.0] — 2026-09-10
 
 The app stops being a front-end for command-line tools and becomes a complete
@@ -115,10 +31,18 @@ you mux.
   and their images are browsable — so you can confirm a track is the one you
   want before spending time on it.
 - **Batch conversion.** Add any number of files, or drop a folder to queue a
-  whole season. Files and their tracks appear as an outline in the sidebar.
-- **A real macOS window.** `NavigationSplitView` with a sidebar, a detail
-  view, an inspector for recognition and output options (⌥⌘I), and a status
-  bar with overall progress and a Cancel button.
+  whole season.
+- **A real macOS window.** The queue is a table across the top: every file,
+  and underneath it every track with its language, cue count, and what it is
+  doing. The cue review sits below it with the full width of the window, and a
+  divider you can drag between them. A play button in the toolbar starts the
+  work and becomes Stop in the same place. An inspector carries recognition and
+  output options (⌥⌘I), and the status bar along the bottom is always there,
+  saying what is queued, what is running, or what was saved.
+- **Track status you can read at a glance.** Each row carries an icon and a
+  word, and colour is rationed: green only for a subtitle file that is written
+  and needs nothing, orange for something to look at, red for something that
+  did not happen.
 - **Settings** (⌘,) for output location, conflict policy, default languages,
   invert, custom words, notifications, and updates.
 - **Finder integration.** Open With for MKV, MKS, SUP, SUB, and IDX; a
@@ -138,8 +62,14 @@ you mux.
   and Intel.
 - **Track languages drive recognition.** A track tagged `jpn` is recognized as
   Japanese even when your default is English.
-- **An output folder option.** Write every `.srt` to one folder instead of
-  next to each source.
+- **A destination menu in the toolbar**, beside the button that starts the
+  work, so where the subtitle files land is visible at the moment it matters.
+  Next to the film is the default; you can send them to one folder instead, or
+  choose *Ask each time* and pick a folder before each run.
+- **Search and a needs-review filter** in the track header, next to the cue
+  list they act on. ⌘F puts the cursor in the search field.
+- **Remove (⌘⌫)** takes the selected file out of the queue, from the toolbar
+  or the File menu.
 - **An update check** against the project's GitHub releases, once a day, with
   an opt-out in Settings. It never downloads or installs anything.
 
@@ -150,6 +80,16 @@ you mux.
 - **Track probing is instant.** Reading the track list only parses the
   Matroska `Info` and `Tracks` elements, so a 40 GB remux lists its tracks as
   fast as a small file.
+- **Reading a subtitle track follows the file's own index.** Matroska records
+  which clusters hold each track, so pulling one subtitle track out of a 30 GB
+  remux reads a few hundred megabytes rather than thirty gigabytes. Files with
+  no index, and indexes that turn out to be wrong, still fall back to reading
+  everything.
+- **The next track is read while the current one is being recognized.** A
+  subtitle track's blocks are scattered across the whole film, so the first
+  read of one off an external drive takes seven to fifteen seconds. That now
+  happens behind the recognition of the track before it, which needs the disk
+  for nothing.
 - **Extracted tracks are cached** under `~/Library/Caches`, so reopening a
   file skips the extraction pass entirely.
 - **Progress is per cue**, not per stage: "312 of 1,204 cues" rather than a
@@ -186,6 +126,33 @@ Files dropped on the window mid-run join the run instead of being silently
 ignored, redo no longer breaks the undo chain, and the same track can no
 longer be read out of a container twice at once.
 
+**Opening a large file no longer takes a minute.** Foundation's "map the file
+if it is safe" decides safety by volume and declines on most external drives,
+where declining means copying the whole file into memory. On a 30 GB remux on
+an external drive that was 58.7 seconds and 1.4 GB of RAM before a single byte
+was parsed; mapping it reads the same file's track list in 0.027 seconds.
+Files on a network share are read rather than mapped, because there every page
+fault is a round trip and a share that drops mid-read raises a signal nothing
+can catch.
+
+**Some tracks came out empty.** Remuxers routinely compress subtitle frames,
+which the reader did not undo, so the decoder was handed deflated bytes and
+found nothing at all. Both compression schemes Matroska defines for subtitle
+data are handled now, and an encrypted track says so instead of appearing
+blank.
+
+**The window froze while a file was being read.** The container walk ran on
+the main actor, so it blocked the interface — including the progress bar that
+was meant to show it working.
+
+**Opening a file re-read its index once per track.** On a remux with
+twenty-eight subtitle tracks that was fifty-six index walks and fifty-six
+memory maps for a single batch. It is one of each now.
+
+**Building a VobSub cue list no longer reassembles every subpicture.** Timings
+live in a control block at the end of each one, and the bitmap in front of it
+is not read until something asks to see it.
+
 **Malicious subtitle files can no longer crash the app.** An adversarial
 review of the new parsers found six ways a crafted file could take it down: a
 120 KB Matroska file that overflowed the stack through nested elements, three
@@ -217,6 +184,16 @@ produced wrong output rather than an error, so they were invisible before:
 - **Subtitles that re-display an earlier image were skipped**, and a track
   whose `Info` element followed its `Tracks` element got the wrong timestamp
   scale, and so the wrong timings throughout.
+
+Smaller fixes, from three audits of the finished app:
+
+- **Revert All Edits can be undone**, like every other edit in the app, and
+  **Reset All Settings asks first**.
+- The progress bar can no longer tick backwards.
+- Counts read correctly at one: "1 track, included" rather than "1, included",
+  and a lone text subtitle track is described in the singular.
+- The button that starts a run says what is missing when it is disabled.
+- The accept checkbox in the clean-up sheet has an accessibility label.
 
 ### Notes
 
