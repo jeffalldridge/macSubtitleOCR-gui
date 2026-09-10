@@ -72,6 +72,11 @@ you mux.
   three-step guess.
 - The app is named **macSubtitleOCR** throughout; `macSubtitleOCR-gui`
   remains the repository and executable name.
+- **The bundle identifier is now `com.tentstudios.macSubtitleOCR`**, matching
+  the name. Your language, invert, and custom-word settings are carried over
+  automatically the first time 1.0 runs. The change also clears a stale
+  per-identifier association that could leave the app running with no window
+  at all.
 
 ### Fixed
 
@@ -96,8 +101,8 @@ produced wrong output rather than an error, so they were invisible before:
 
 ### Notes
 
-- Upgrading is safe: the app's settings and output naming are unchanged, and
-  no files from earlier versions need migrating.
+- Upgrading is safe: output naming is unchanged, no files need migrating, and
+  your recognition settings are carried across the identifier change.
 - Version 0.2 users on macOS 14 should stay on
   [v0.2.0](https://github.com/jeffalldridge/macSubtitleOCR-gui/releases/tag/v0.2.0).
 
