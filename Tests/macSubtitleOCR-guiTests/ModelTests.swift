@@ -412,3 +412,41 @@ private let fixtures = URL(fileURLWithPath: #filePath)
         #expect(second.defaultLanguages == ["fr"], "once 1.0 has its own settings, they win")
     }
 }
+
+@Suite struct OutputNamingHostileInputTests {
+    private let film = URL(fileURLWithPath: "/Users/me/Movies/Film.mkv")
+
+    private func name(forTrackNamed trackName: String) -> String {
+        OutputNaming.url(for: TrackInfo(id: 1, format: .pgs, language: "eng", name: trackName),
+                         sourceURL: film, fallbackLanguage: nil, outputFolder: nil,
+                         conflictPolicy: .addSuffix, existing: []).lastPathComponent
+    }
+
+    @Test func pathSeparatorsInATrackNameCannotEscapeTheFolder() {
+        // Track names come out of the container, so they are untrusted.
+        for hostile in ["../../etc/passwd", "/etc/passwd", "..", "../..", "a/b/c", ":evil"] {
+            let produced = name(forTrackNamed: hostile)
+            #expect(!produced.contains("/"), "\(hostile) produced \(produced)")
+            #expect(!produced.contains(".."), "\(hostile) produced \(produced)")
+            #expect(produced.hasPrefix("Film.eng"))
+            #expect(produced.hasSuffix(".srt"))
+        }
+    }
+
+    @Test func aVeryLongTrackNameIsTruncated() {
+        let produced = name(forTrackNamed: String(repeating: "commentary ", count: 400))
+        #expect(produced.utf8.count < 255)
+        #expect(produced.hasPrefix("Film.eng.commentary"))
+        #expect(!produced.contains("-.srt"), "no dangling dash where it was cut")
+    }
+
+    @Test func nonLatinTrackNamesSurvive() {
+        #expect(OutputNaming.sanitize("日本語 コメンタリー") == "日本語-コメンタリー")
+        #expect(OutputNaming.sanitize("Ελληνικά") == "ελληνικά")
+    }
+
+    @Test func aTrackNameOfOnlyPunctuationVanishes() {
+        #expect(OutputNaming.sanitize("///...///") == "")
+        #expect(name(forTrackNamed: "///") == "Film.eng.srt")
+    }
+}

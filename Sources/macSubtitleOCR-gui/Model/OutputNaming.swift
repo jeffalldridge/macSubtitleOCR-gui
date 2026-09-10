@@ -55,8 +55,17 @@ nonisolated enum OutputNaming {
         Set((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? [])
     }
 
+    /// Longest track-name fragment allowed in a filename. macOS caps a path
+    /// component at 255 bytes, and the name is only one part of it; a
+    /// container can carry a track name of any length at all.
+    static let maxTrackNameLength = 60
+
     /// Lowercase; runs of anything that is not a letter or digit become one
-    /// dash; leading and trailing dashes are dropped.
+    /// dash; leading and trailing dashes are dropped; length is capped.
+    ///
+    /// Track names come out of the file, so this is the boundary where
+    /// something hostile — path separators, a name longer than the
+    /// filesystem allows — stops being dangerous.
     static func sanitize(_ raw: String) -> String {
         var out = ""
         var pendingDash = false
@@ -69,6 +78,11 @@ nonisolated enum OutputNaming {
                 pendingDash = true
             }
         }
-        return out.lowercased()
+        var result = out.lowercased()
+        if result.count > maxTrackNameLength {
+            result = String(result.prefix(maxTrackNameLength))
+            while result.hasSuffix("-") { result.removeLast() }
+        }
+        return result
     }
 }
