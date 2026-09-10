@@ -1,11 +1,10 @@
 version: 2
 updates:
+  # The only dependency this project has is the actions its workflows use.
+  # There are no submodules and no Swift packages: the subtitle engine is
+  # source in this repository (see Sources/SubtitleEngine/UPSTREAM.md, and
+  # `make diff-upstream` to see what changed upstream).
   - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-
-  - package-ecosystem: "gitsubmodule"
     directory: "/"
     schedule:
       interval: "weekly"

@@ -13,17 +13,17 @@ body:
     id: macos-version
     attributes:
       label: macOS version
-      description: e.g. "Sonoma 14.5" or "Sequoia 15.0".
-      placeholder: macOS 14.5
+      description: e.g. "Sequoia 15.4" or "Tahoe 26.1".
+      placeholder: macOS 15.4
     validations:
       required: true
 
   - type: input
     id: app-version
     attributes:
-      label: macSubtitleOCR-gui version
-      description: From the menu bar → About, or in the .dmg filename.
-      placeholder: v0.1.0
+      label: macSubtitleOCR version
+      description: From the menu bar → macSubtitleOCR → About.
+      placeholder: v1.0.0
     validations:
       required: true
 
@@ -32,7 +32,7 @@ body:
     attributes:
       label: Hardware
       options:
-        - Apple Silicon (M-series)
+        - Apple silicon (M-series)
         - Intel
     validations:
       required: true
@@ -50,23 +50,24 @@ body:
     attributes:
       label: Steps to reproduce
       description: |
-        Concrete steps. If a specific file triggers it, run
-        `mkvmerge -J path/to/file.mkv > tracks.json` and attach `tracks.json`
-        (it's metadata only, no video / audio data).
+        Concrete steps. Decoding bugs are much easier to fix with a file that
+        reproduces them — a short clip cut from the source, or the extracted
+        subtitle track on its own, is usually enough and carries no video or
+        audio.
       placeholder: |
-        1. Drop tracks.json onto the window
-        2. Tick "English (SDH)"
-        3. Click Run OCR
-        4. App freezes at "Extracting"
+        1. Drop Film.mkv onto the window
+        2. Tick "English — SDH"
+        3. Press Recognize
+        4. Every cue after 00:42 comes out blank
     validations:
       required: true
 
   - type: textarea
-    id: log
+    id: notes
     attributes:
-      label: Log panel contents
+      label: Notes shown for the track
       description: |
-        From the Run / Done screen → "Log" disclosure → copy and paste here.
+        If the track detail showed a "notes" disclosure, paste what it said.
       render: shell
     validations:
       required: false

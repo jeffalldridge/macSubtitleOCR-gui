@@ -12,8 +12,10 @@
 
 - [ ] `make test` passes locally
 - [ ] `make build` is clean (no new warnings)
+- [ ] `make app` assembles and the bundle passes its `--self-check`
 - [ ] For UI changes: before/after screenshot below
-- [ ] For pipeline changes: smoke-tested against a real `.mkv` (track, language, output filename)
+- [ ] For engine changes: checked against a real file end to end — track list,
+      cue timings, recognized text, output filename
 
 ## Notes for the reviewer
 

@@ -2,36 +2,54 @@
 
 ## Supported versions
 
-Only the latest tagged release is actively supported. Older releases will not
+Only the latest tagged release is actively supported. Older releases do not
 receive backports.
 
 ## Reporting a vulnerability
 
-If you find a security issue — for example, a path-traversal in how filenames
-are handled, a crash that could be triggered by a malicious subtitle file,
-or anything that could leak data from a user's machine — please **don't open
-a public GitHub issue.**
+If you find a security issue — a crash or memory-safety problem triggered by
+a malicious subtitle file, a path-traversal in how output filenames are
+built, or anything that could leak data from a user's machine — please
+**don't open a public GitHub issue.**
 
-Instead, email **jeff.alldridge@gmail.com** with:
+Email **jeff.alldridge@gmail.com** with:
 
 - A description of the issue
-- Steps to reproduce (a minimal `.mkv` or `.sup` is helpful)
+- Steps to reproduce, ideally with a minimal file that triggers it
 - Your suggested severity rating
 
-You should expect a response within a few days. Once the issue is fixed and
-released, you'll be credited in the changelog (unless you'd rather stay
-anonymous).
+Expect a response within a few days. Once the issue is fixed and released,
+you'll be credited in the changelog unless you'd rather stay anonymous.
 
 ## Scope
 
-This is a Mac-only tool that runs locally and does not phone home or perform
-network operations beyond `make update` (a Homebrew-style submodule bump
-under your control). Practical attack surface is:
+The app runs entirely on your Mac. It makes exactly one network request: an
+optional once-a-day check of the project's GitHub releases for a newer
+version number, which you can turn off in Settings. It downloads and installs
+nothing on its own.
 
-- Parsing untrusted `.mkv` / `.sup` / `.sub` / `.idx` files
-- Shelling out to `mkvmerge` and `mkvextract` (system-installed)
-- File-system writes to the user's chosen output directory
+Since 1.0 the app parses container and subtitle formats itself rather than
+shelling out to other tools, so **parsing untrusted files is the main attack
+surface**:
 
-Issues outside this scope are usually better reported upstream — e.g.
-OCR-engine bugs to [macSubtitleOCR](https://github.com/ecdye/macSubtitleOCR)
-or [MKVToolNix](https://gitlab.com/mbunkus/mkvtoolnix).
+- Matroska (`.mkv`, `.mks`) container parsing — EBML elements, cluster and
+  block headers, all three lacing modes
+- Blu-ray PGS (`.sup`) segment parsing and run-length decoding
+- DVD VobSub (`.sub` / `.idx`) MPEG program-stream parsing, control
+  sequences, and run-length decoding
+- Bitmap composition and palette handling
+- File-system writes to the output folder you choose
+
+All of it is memory-safe Swift over a memory-mapped buffer, with bounds
+checks on every read, and is written to survive truncated and malformed
+input by reporting a problem rather than trapping. A crash, a hang, or a read
+past the end of a buffer in any of it is a bug worth reporting.
+
+Not in scope:
+
+- Recognition accuracy. Wrong text is a quality issue; open a normal issue.
+- Apple's Vision, Translation, and Foundation Models frameworks. Report those
+  to Apple.
+- Problems reproducible only in the upstream
+  [macSubtitleOCR](https://github.com/ecdye/macSubtitleOCR) command-line tool,
+  which this project's engine was derived from but no longer runs.
