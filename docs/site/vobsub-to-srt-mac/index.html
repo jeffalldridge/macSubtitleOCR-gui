@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to Convert VobSub SUB/IDX Subtitles to SRT on Mac</title>
+<meta name="description" content="Convert VobSub SUB/IDX subtitles or VobSub tracks in MKV to editable SRT on macOS with Apple Vision OCR. Free, local, and self-contained.">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#0c0f14">
+<meta name="color-scheme" content="dark">
+<meta name="author" content="Jeff Alldridge / Tent Studios, LLC">
+<meta property="og:title" content="How to Convert VobSub SUB/IDX Subtitles to SRT on Mac">
+<meta property="og:description" content="A practical local workflow for turning DVD bitmap subtitles into editable SRT text.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://jeffalldridge.github.io/macSubtitleOCR-gui/vobsub-to-srt-mac/">
+<meta property="og:image" content="https://jeffalldridge.github.io/macSubtitleOCR-gui/og-image.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:alt" content="macSubtitleOCR converts VobSub SUB and IDX subtitles to SRT on macOS">
+<meta property="og:site_name" content="macSubtitleOCR">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Convert VobSub SUB/IDX Subtitles to SRT on Mac">
+<meta name="twitter:description" content="Recognize DVD bitmap subtitles locally and review the resulting SRT.">
+<meta name="twitter:image" content="https://jeffalldridge.github.io/macSubtitleOCR-gui/og-image.png">
+<meta name="twitter:image:alt" content="macSubtitleOCR converts VobSub SUB and IDX subtitles to SRT on macOS">
+<link rel="canonical" href="https://jeffalldridge.github.io/macSubtitleOCR-gui/vobsub-to-srt-mac/">
+<link rel="icon" type="image/png" href="../favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="stylesheet" href="../style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "macSubtitleOCR", "item": "https://jeffalldridge.github.io/macSubtitleOCR-gui/" },
+        { "@type": "ListItem", "position": 2, "name": "Convert VobSub to SRT on Mac", "item": "https://jeffalldridge.github.io/macSubtitleOCR-gui/vobsub-to-srt-mac/" }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "How to convert VobSub SUB/IDX subtitles to SRT on a Mac",
+      "description": "Use macSubtitleOCR to recognize DVD VobSub bitmap subtitles from paired SUB/IDX files or Matroska tracks and save editable SubRip text.",
+      "tool": [{ "@type": "HowToTool", "name": "A Mac running macOS 15 or newer" }, { "@type": "HowToTool", "name": "macSubtitleOCR" }],
+      "supply": [{ "@type": "HowToSupply", "name": "A paired SUB/IDX set or MKV/MKS file containing VobSub subtitles" }],
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Keep SUB and IDX together", "text": "For standalone VobSub, put the matching SUB and IDX files in the same folder with the same base filename." },
+        { "@type": "HowToStep", "position": 2, "name": "Open the source", "text": "Open either paired file, or open an MKV or MKS containing a VobSub track." },
+        { "@type": "HowToStep", "position": 3, "name": "Select and recognize the track", "text": "Confirm the language, select the VobSub track, choose the output location, and start recognition." },
+        { "@type": "HowToStep", "position": 4, "name": "Review the SRT", "text": "Compare the recognized text with each DVD subtitle bitmap and correct errors inline." }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<nav class="topnav" aria-label="Primary">
+  <div class="container">
+    <a class="topnav-brand" href="../"><img src="../favicon-192.png" alt="" width="24" height="24"><span>macSubtitleOCR</span></a>
+    <ul class="topnav-links">
+      <li><a href="../pgs-to-srt-mac/">PGS to SRT</a></li>
+      <li><a href="./" aria-current="page">VobSub to SRT</a></li>
+      <li><a href="../#download">Download</a></li>
+      <li><a href="https://github.com/jeffalldridge/macSubtitleOCR-gui">GitHub</a></li>
+    </ul>
+  </div>
+</nav>
+<main id="main">
+  <header class="guide-hero">
+    <div class="container">
+      <p class="breadcrumbs"><a href="../">macSubtitleOCR</a> / VobSub to SRT</p>
+      <p class="eyebrow">DVD bitmap subtitle guide</p>
+      <h1>How to convert VobSub SUB/IDX subtitles to SRT on Mac</h1>
+      <p class="subtagline">VobSub stores DVD subtitles as pictures in a SUB file and timing, palette, and language information in an IDX file. macSubtitleOCR reads the pair — or an embedded VobSub track — and turns each cue into editable SRT text locally.</p>
+      <div class="cta"><a class="button primary" href="https://github.com/jeffalldridge/macSubtitleOCR-gui/releases/latest">Download macSubtitleOCR</a><a class="button" href="#steps">Start the guide</a></div>
+      <p class="version">Free and open source · macOS 15+ · Apple silicon and Intel</p>
+    </div>
+  </header>
+  <section class="section">
+    <div class="container guide-layout">
+      <article class="guide-content">
+        <h2 id="what-you-need">What you need</h2>
+        <p>You need a Mac running macOS 15 or newer, the free macSubtitleOCR app, and either a standalone VobSub pair or a Matroska file with VobSub tracks:</p>
+        <table class="guide-table">
+          <thead><tr><th>Source</th><th>What the app reads</th></tr></thead>
+          <tbody>
+            <tr><th><code>Movie.sub</code> + <code>Movie.idx</code></th><td>The SUB contains DVD subtitle images; the matching IDX supplies timing, colors, and track languages.</td></tr>
+            <tr><th><code>.mkv</code> or <code>.mks</code></th><td>Embedded VobSub tracks and their Matroska language, title, default, and forced flags.</td></tr>
+          </tbody>
+        </table>
+        <div class="guide-note"><p><strong>For standalone VobSub, both files are required.</strong> Keep <code>Movie.sub</code> and <code>Movie.idx</code> in the same folder with the same base name. Opening either one opens the pair.</p></div>
+
+        <h2 id="steps">Convert SUB/IDX to SRT step by step</h2>
+        <ol>
+          <li><strong>Check the pair.</strong> Make sure the SUB and IDX filenames match and are in the same folder. If your VobSub track is in MKV or MKS, you can skip this step.</li>
+          <li><strong>Open the source.</strong> Drag either paired file, the MKV, or the MKS into macSubtitleOCR. Add a folder when you want to queue many sources.</li>
+          <li><strong>Select a language track.</strong> An IDX can describe several subtitle languages in one SUB file. Expand the source, verify the language, and tick only the tracks you need.</li>
+          <li><strong>Make subtitles.</strong> Choose the destination and start recognition. The app decodes the DVD subpictures using their palette and sends the rendered text images to Apple Vision.</li>
+          <li><strong>Review the SRT.</strong> Check flagged cues and compare each recognized line with its original bitmap. Correct text inline; changes are saved to the SRT.</li>
+        </ol>
+
+        <h2 id="pair">Why are there two VobSub files?</h2>
+        <p>The binary <code>.sub</code> file holds compressed subtitle pictures. The text <code>.idx</code> file tells software when each picture appears, which palette to use, and which language tracks exist. A SUB file by itself does not contain enough information for reliable conversion.</p>
+        <p>If one file is missing, return to the original rip or extract the VobSub track again as a complete SUB/IDX pair. Renaming unrelated files to match will not repair the metadata.</p>
+
+        <h2 id="output">What file do you get?</h2>
+        <p>The SRT contains timing and recognized text, not the original DVD pixels, palette, or screen position. Output names use language and track information to avoid collisions:</p>
+        <pre class="code"><code>Movie.sub
+Movie.idx
+Movie.eng.srt
+Movie.spa.forced.srt</code></pre>
+        <p>Keep the SRT beside the video for compatible players, edit it in any subtitle editor, or mux it as a text subtitle into another container.</p>
+
+        <h2 id="accuracy">What should you review?</h2>
+        <p>DVD subtitles have lower resolution than Blu-ray PGS, so thin strokes, italics, punctuation, and accented characters may need more checking. Start with cues the app flags as low confidence. The review table keeps the bitmap, timing, and editable result together.</p>
+        <p>Try <strong>Invert images before recognition</strong> when a particular palette renders poorly for OCR. Add names and repeated unusual terms to <strong>Custom words</strong> before running the track again.</p>
+
+        <h2 id="tools">Do you need another subtitle tool?</h2>
+        <p>No companion tool is required for SUB/IDX or VobSub-in-MKV input. macSubtitleOCR includes the Matroska reader, VobSub parser, palette rendering, and OCR path. A larger editor can still be useful later if you want to retime or restyle the resulting text subtitles.</p>
+
+        <h2 id="privacy">Does conversion upload the subtitles?</h2>
+        <p>No. VobSub decoding and Vision recognition run on your Mac. Optional clean-up and translation are local too. Only the optional update check contacts GitHub.</p>
+
+        <h2 id="next">Ready to convert?</h2>
+        <p>Download the signed and notarized app, then open either file in your SUB/IDX pair.</p>
+        <div class="cta"><a class="button primary" href="https://github.com/jeffalldridge/macSubtitleOCR-gui/releases/latest">Get the latest release</a><a class="button" href="../pgs-to-srt-mac/">Need PGS instead?</a></div>
+      </article>
+      <aside class="guide-nav" aria-label="On this page">
+        <h2>On this page</h2>
+        <ul>
+          <li><a href="#what-you-need">What you need</a></li>
+          <li><a href="#steps">Step-by-step conversion</a></li>
+          <li><a href="#pair">The SUB/IDX pair</a></li>
+          <li><a href="#output">SRT output</a></li>
+          <li><a href="#accuracy">What to review</a></li>
+          <li><a href="#privacy">Privacy</a></li>
+        </ul>
+      </aside>
+    </div>
+  </section>
+</main>
+<footer class="footer"><div class="container"><p>By <a href="https://tentstudios.com">Tent Studios, LLC</a>. MIT licensed. <a href="../">macSubtitleOCR home</a> · <a href="https://github.com/jeffalldridge/macSubtitleOCR-gui">Source</a> · <a href="https://github.com/jeffalldridge/macSubtitleOCR-gui/issues">Issues</a></p></div></footer>
+</body>
+</html>
