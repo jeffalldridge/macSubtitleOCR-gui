@@ -71,7 +71,10 @@ extension MKVReader {
             }
 
             reader.forEachChild(of: segment) { child in
-                if Task.isCancelled { cancelled = true; return false }
+                if Task.isCancelled {
+                    cancelled = true
+                    return false
+                }
                 guard child.id == MatroskaID.cluster else { return true }
                 var clusterTimestamp: UInt64 = 0
                 reader.forEachChild(of: child) { element in

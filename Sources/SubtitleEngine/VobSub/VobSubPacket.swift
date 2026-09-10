@@ -59,8 +59,12 @@ struct VobSubPacket {
             let headerLength = Int(bytes[p + 2])
             p += 3
             if pts == nil, flags2 & 0x80 != 0, headerLength >= 5, p + 5 <= pesEnd {
-                let b0 = UInt64(bytes[p]), b1 = UInt64(bytes[p + 1]), b2 = UInt64(bytes[p + 2])
-                let b3 = UInt64(bytes[p + 3]), b4 = UInt64(bytes[p + 4])
+                // A 33-bit PTS spread across five bytes, one marker bit each.
+                let b0 = UInt64(bytes[p])
+                let b1 = UInt64(bytes[p + 1])
+                let b2 = UInt64(bytes[p + 2])
+                let b3 = UInt64(bytes[p + 3])
+                let b4 = UInt64(bytes[p + 4])
                 let ticks = ((b0 >> 1) & 0x07) << 30 | b1 << 22 | (b2 >> 1) << 15 | b3 << 7 | b4 >> 1
                 pts = TimeInterval(ticks) / 90000
             }
@@ -110,7 +114,10 @@ struct VobSubPacket {
                 case 0x00:
                     isForced = true
                 case 0x01:
-                    if !sawStart { startDelay = delay; sawStart = true }
+                    if !sawStart {
+                        startDelay = delay
+                        sawStart = true
+                    }
                 case 0x02:
                     stopDelay = delayTicks == 0xFFFF ? nil : delay
                 case 0x03:
