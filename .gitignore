@@ -7,8 +7,6 @@ build/
 DerivedData/
 Package.pins
 
-# macSubtitleOCR binary is produced by `make build`, not source-controlled.
-Sources/macSubtitleOCR-gui/Resources/macSubtitleOCR
 
 # macOS junk
 .DS_Store
