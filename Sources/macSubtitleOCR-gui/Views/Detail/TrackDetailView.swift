@@ -43,6 +43,11 @@ struct TrackDetailView: View {
         .task(id: track.id) {
             queue.loadStreamIfNeeded(for: track)
         }
+        .onDisappear {
+            // Switching tracks must not outrun the debounced save.
+            saveTask?.cancel()
+            if track.hasUnsavedEdits { queue.saveEdits(for: track) }
+        }
         .onChange(of: rows.map(\.id)) { _, ids in
             if let selectedCue, !ids.contains(selectedCue) { self.selectedCue = ids.first }
             if selectedCue == nil { selectedCue = ids.first }

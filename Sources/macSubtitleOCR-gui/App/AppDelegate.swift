@@ -45,6 +45,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        // An edit made in the last half-second is still sitting behind a
+        // debounce timer. Write it out before anything else.
+        Self.queue?.flushPendingEdits()
+
         guard let queue = Self.queue, queue.isRunning else { return .terminateNow }
         let alert = NSAlert()
         alert.messageText = "Recognition is still running."

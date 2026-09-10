@@ -288,6 +288,21 @@ final class ConversionQueue {
 
     // MARK: - Editing results
 
+    /// Write out any edit that a debounce timer has not yet flushed.
+    ///
+    /// Called when a track's view goes away and when the app is asked to
+    /// quit, so that typing a correction and immediately closing the window
+    /// does not throw the correction away.
+    func flushPendingEdits() {
+        for track in allTracks where track.hasUnsavedEdits {
+            saveEdits(for: track)
+        }
+    }
+
+    var hasUnsavedEdits: Bool {
+        allTracks.contains { $0.hasUnsavedEdits }
+    }
+
     /// Persist edits for a track (debounced by the caller).
     func saveEdits(for track: QueueTrack) {
         guard let file = file(for: track), track.outputURL != nil else { return }

@@ -450,3 +450,48 @@ private let fixtures = URL(fileURLWithPath: #filePath)
         #expect(name(forTrackNamed: "///") == "Film.eng.srt")
     }
 }
+
+@Suite(.serialized) struct PendingEditTests {
+    @Test func flushWritesEditsThatTheDebounceHasNotSavedYet() throws {
+        let dir = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let name = "pending-\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defaults.removePersistentDomain(forName: name)
+        let queue = ConversionQueue(settings: AppSettings(defaults: defaults),
+                                    cache: StreamCache(directory: dir.appendingPathComponent("cache")))
+
+        let source = try SubtitleSource.open(fixtures.appendingPathComponent("sintel.sup"))
+        let file = QueueFile(source: source)
+        let track = QueueTrack(fileID: file.id, info: TrackInfo(id: 1, format: .pgs), isIncluded: true)
+        file.tracks = [track]
+        queue.files = [file]
+
+        // Stand in for a finished run: cues on screen and a file on disk.
+        let output = dir.appendingPathComponent("sintel.eng.srt")
+        track.cues = [ReviewCue(index: 0, start: 1, end: 2, text: "originai text")]
+        track.outputURL = output
+        try SRTFile.render(track.cues.map(\.srtCue)).write(to: output, atomically: true, encoding: .utf8)
+
+        // The user types a correction; the debounce has not fired.
+        track.cues[0].text = "original text"
+        track.hasUnsavedEdits = true
+        #expect(queue.hasUnsavedEdits)
+
+        queue.flushPendingEdits()
+
+        let written = SRTFile.parse(try String(contentsOf: output, encoding: .utf8))
+        #expect(written.first?.text == "original text")
+        #expect(!track.hasUnsavedEdits)
+        #expect(!queue.hasUnsavedEdits)
+    }
+
+    @Test func flushIsHarmlessWithNothingPending() throws {
+        let name = "pending-empty-\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defaults.removePersistentDomain(forName: name)
+        let queue = ConversionQueue(settings: AppSettings(defaults: defaults))
+        queue.flushPendingEdits()
+        #expect(!queue.hasUnsavedEdits)
+    }
+}
