@@ -116,3 +116,60 @@ import Testing
         #expect(pixels == [3, 3, 3, 2, 2, 2, 2, 2, 2, 2])
     }
 }
+
+/// Indexing reads only the control block at the end of each subpicture;
+/// drawing reassembles the whole thing. The two must agree about timing, or a
+/// cue would appear in the list at one moment and be drawn at another.
+@Suite struct VobSubIndexingTests {
+    @Test func timingAgreesWithAFullReassembly() throws {
+        let idx = try VobSubIDX(url: Fixtures.sintelIDX)
+        let sub = try Data(contentsOf: Fixtures.sintelSUB)
+        var compared = 0
+
+        try sub.withUnsafeBytes { bytes in
+            let entries = idx.entries
+            for (i, entry) in entries.enumerated() {
+                let next = i + 1 < entries.count ? entries[i + 1].offset : bytes.count
+                guard entry.offset < bytes.count, next > entry.offset else { continue }
+                let timing = try VobSubPacket.timing(bytes, offset: entry.offset, nextOffset: next)
+                let full = try VobSubPacket(bytes, offset: entry.offset, nextOffset: next)
+                #expect(timing.startDelay == full.startDelay)
+                #expect(timing.stopDelay == full.stopDelay)
+                #expect(timing.isForced == full.isForced)
+                #expect(timing.pts == full.pts)
+                compared += 1
+            }
+        }
+        #expect(compared > 10, "the fixture has enough cues for this to mean something")
+    }
+
+    @Test func indexingReadsFarLessThanDecoding() throws {
+        // The point of the split: the bitmap in front of the control block is
+        // the bulk of a subpicture, and the cue list never needs it.
+        let idx = try VobSubIDX(url: Fixtures.sintelIDX)
+        let sub = try Data(contentsOf: Fixtures.sintelSUB)
+        var fullBytes = 0
+        var controlBytes = 0
+
+        try sub.withUnsafeBytes { bytes in
+            let entries = idx.entries
+            for (i, entry) in entries.enumerated() {
+                let next = i + 1 < entries.count ? entries[i + 1].offset : bytes.count
+                guard entry.offset < bytes.count, next > entry.offset else { continue }
+                let full = try VobSubPacket(bytes, offset: entry.offset, nextOffset: next)
+                let controlOffset = Int(full.spu[2]) << 8 | Int(full.spu[3])
+                fullBytes += full.spu.count
+                controlBytes += max(full.spu.count - controlOffset, 0)
+            }
+        }
+        #expect(controlBytes * 4 < fullBytes,
+                "indexing copies a small fraction of what a full reassembly does")
+    }
+
+    @Test func aStreamStillDecodesAfterIndexingCheaply() throws {
+        let stream = try VobSubStream(subURL: Fixtures.sintelSUB, idxURL: Fixtures.sintelIDX)
+        #expect(stream.warnings.isEmpty)
+        let bitmap = try #require(try stream.bitmap(at: 0))
+        #expect(bitmap.width > 0 && bitmap.height > 0)
+    }
+}

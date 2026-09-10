@@ -38,10 +38,14 @@ public struct VobSubStream: SubtitleStream {
                     continue
                 }
                 do {
-                    let packet = try VobSubPacket(bytes, offset: entry.offset, nextOffset: next)
-                    warnings.append(contentsOf: packet.warnings)
-                    let start = entry.timestamp + packet.startDelay
-                    let end = packet.stopDelay.map { entry.timestamp + $0 }
+                    // Timings only: the RLE bitmap is not read until something
+                    // asks to see it. Reassembling every subpicture here meant
+                    // copying the whole track to build a list of times, and
+                    // then copying it again to draw any of it.
+                    let timing = try VobSubPacket.timing(bytes, offset: entry.offset, nextOffset: next)
+                    warnings.append(contentsOf: timing.warnings)
+                    let start = entry.timestamp + timing.startDelay
+                    let end = timing.stopDelay.map { entry.timestamp + $0 }
                     cues.append(CueInfo(index: cues.count, start: start, end: end, byteRange: entry.offset..<next))
                 } catch {
                     warnings.append("Subpicture \(i + 1) could not be read and was skipped.")

@@ -251,6 +251,13 @@ final class ConversionQueue {
                         try? await Task.sleep(for: .milliseconds(120))
                     }
                 }
+                // Start reading the next track out of its container while
+                // this one is being recognized. Recognition is the long pole
+                // and it barely touches the disk, so the read costs nothing
+                // in wall-clock time if it happens now — and the run reaches
+                // the next track with its subtitles already in hand.
+                prefetch(after: position, in: pending)
+
                 do {
                     let url = try await ConversionRunner.run(track: track, in: file, options: options,
                                                             cache: cache, claimedNames: claimedNames)
@@ -309,6 +316,29 @@ final class ConversionQueue {
 
     func cancel() {
         runTask?.cancel()
+        // A track being read ahead of the run is part of the run, and its
+        // work is detached, so cancelling the run alone would leave it
+        // grinding through a container nobody is waiting for.
+        for track in allTracks {
+            track.loadTask?.cancel()
+        }
+    }
+
+    /// Begin reading the next track that has nothing loaded yet.
+    ///
+    /// One track ahead, not more: each loaded stream holds its decoded
+    /// subtitle data, and reading the whole queue into memory to save a few
+    /// seconds is not a trade worth making.
+    private func prefetch(after position: Int, in pending: [QueueTrack]) {
+        let next = position + 1
+        guard next < pending.count else { return }
+        let track = pending[next]
+        guard track.stream == nil, track.loadTask == nil, track.loadState == .notLoaded,
+              let file = file(for: track) else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            _ = try? await ConversionRunner.loadStream(for: track, in: file, cache: cache)
+        }
     }
 
     static func activityLabel(for track: QueueTrack) -> String {

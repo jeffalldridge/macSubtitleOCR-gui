@@ -15,6 +15,12 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **A play button.** The primary action is a filled play button in the top
   right, and it becomes Stop in the same place while a run is going.
 
+- **The next track is read while the current one is being recognized.** A
+  subtitle track's blocks are scattered across the whole film, so reading one
+  off an external drive takes seven to fifteen seconds the first time. That
+  now happens behind the recognition of the track before it, which needs the
+  disk for nothing.
+
 ### Fixed
 
 - **Crash while scrolling the queue.** Table cells and menus are rendered in
@@ -37,6 +43,9 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and a lone text subtitle track is described in the singular.
 - The Recognize button says what is missing when it is disabled.
 - The accept checkbox in the clean-up sheet has an accessibility label.
+- Building the cue list for a VobSub track no longer reassembles every
+  subpicture. Timings live in a control block at the end of each one, and the
+  bitmap in front of it is not read until something asks to see it.
 
 ### Changed
 

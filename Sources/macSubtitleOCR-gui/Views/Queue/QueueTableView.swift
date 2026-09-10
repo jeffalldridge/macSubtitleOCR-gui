@@ -328,7 +328,13 @@ struct TrackStatusCell: View {
                       tint: .orange, help: message)
             }
         case .queued:
-            label("Waiting", systemImage: "clock", tint: .secondary)
+            // A queued track may already be being read, one step ahead of the
+            // run. Saying "Waiting" while that happens hides real work.
+            if case .loading(let fraction) = track.loadState {
+                progress(fraction, label: "Reading ahead")
+            } else {
+                label("Waiting", systemImage: "clock", tint: .secondary)
+            }
         case .extracting(let fraction):
             progress(fraction, label: "Reading track")
         case .indexing:
