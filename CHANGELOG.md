@@ -88,6 +88,14 @@ never be able to hide the interface.
 centre during launch raises an exception outside a real `.app`, which killed
 `make run`.
 
+**Malicious subtitle files can no longer crash the app.** An adversarial
+review of the new parsers found six ways a crafted file could take it down: a
+120 KB Matroska file that overflowed the stack through nested elements, three
+integer traps on out-of-range timestamps and track numbers, an infinite cue
+time smuggled in through a VobSub index, and a 92-byte PGS file that asked
+for a four-gigabyte allocation. All are fixed and covered by tests, alongside
+fuzzing that truncates and corrupts real files at thousands of offsets.
+
 Five decoding bugs, found while porting the engine and fixed here. Each
 produced wrong output rather than an error, so they were invisible before:
 
@@ -106,6 +114,11 @@ produced wrong output rather than an error, so they were invisible before:
 - **Every cue capped at five seconds**, even when the stream carried a longer
   end time. The decoded end is now kept, clamped only so cues cannot overlap;
   the five-second rule applies only when the end is genuinely unknown.
+- **A cue that could not be decoded threw away the whole track.** One
+  unreadable cue now renders blank and the rest of the track is kept.
+- **Subtitles that re-display an earlier image were skipped**, and a track
+  whose `Info` element followed its `Tracks` element got the wrong timestamp
+  scale, and so the wrong timings throughout.
 
 ### Notes
 
