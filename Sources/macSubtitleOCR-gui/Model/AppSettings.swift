@@ -1,0 +1,117 @@
+import Foundation
+import Observation
+
+/// User preferences, persisted to `UserDefaults` as they change.
+@Observable
+final class AppSettings {
+    enum ConflictPolicy: String, CaseIterable, Codable, Identifiable {
+        case addSuffix
+        case replace
+
+        var id: String { rawValue }
+
+        var label: String {
+            switch self {
+            case .addSuffix: "Add a number to the new file"
+            case .replace: "Replace the existing file"
+            }
+        }
+    }
+
+    private struct Snapshot: Codable {
+        var outputFolderPath: String?
+        var conflictPolicy = ConflictPolicy.addSuffix
+        var defaultLanguages = ["en"]
+        var invert = false
+        var customWords = ""
+        var correctLowercaseL = true
+        var notifyWhenDone = true
+        var openReviewWhenDone = true
+        var checkForUpdates = true
+        var lastUpdateCheck: Date?
+        var skippedUpdateVersion: String?
+    }
+
+    static let storageKey = "com.tentstudios.macSubtitleOCR.settings.v1"
+
+    /// Nil means "next to the source file".
+    var outputFolder: URL? { didSet { save() } }
+    var conflictPolicy: ConflictPolicy { didSet { save() } }
+    /// BCP 47 identifiers Vision should try, in order.
+    var defaultLanguages: [String] { didSet { save() } }
+    var invert: Bool { didSet { save() } }
+    /// Raw text; split on commas and newlines when used.
+    var customWords: String { didSet { save() } }
+    var correctLowercaseL: Bool { didSet { save() } }
+    var notifyWhenDone: Bool { didSet { save() } }
+    var openReviewWhenDone: Bool { didSet { save() } }
+    var checkForUpdates: Bool { didSet { save() } }
+    var lastUpdateCheck: Date? { didSet { save() } }
+    var skippedUpdateVersion: String? { didSet { save() } }
+
+    @ObservationIgnored private let defaults: UserDefaults
+    @ObservationIgnored private var isLoading = true
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        var snapshot = Snapshot()
+        if let data = defaults.data(forKey: Self.storageKey),
+           let stored = try? JSONDecoder().decode(Snapshot.self, from: data) {
+            snapshot = stored
+        }
+        outputFolder = snapshot.outputFolderPath.map { URL(fileURLWithPath: $0, isDirectory: true) }
+        conflictPolicy = snapshot.conflictPolicy
+        defaultLanguages = snapshot.defaultLanguages
+        invert = snapshot.invert
+        customWords = snapshot.customWords
+        correctLowercaseL = snapshot.correctLowercaseL
+        notifyWhenDone = snapshot.notifyWhenDone
+        openReviewWhenDone = snapshot.openReviewWhenDone
+        checkForUpdates = snapshot.checkForUpdates
+        lastUpdateCheck = snapshot.lastUpdateCheck
+        skippedUpdateVersion = snapshot.skippedUpdateVersion
+        isLoading = false
+    }
+
+    /// Custom words as a clean list.
+    var customWordList: [String] {
+        Self.words(from: customWords)
+    }
+
+    static func words(from text: String) -> [String] {
+        text.split(whereSeparator: { $0 == "," || $0.isNewline })
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+    }
+
+    func resetToDefaults() {
+        let fresh = Snapshot()
+        outputFolder = nil
+        conflictPolicy = fresh.conflictPolicy
+        defaultLanguages = fresh.defaultLanguages
+        invert = fresh.invert
+        customWords = fresh.customWords
+        correctLowercaseL = fresh.correctLowercaseL
+        notifyWhenDone = fresh.notifyWhenDone
+        openReviewWhenDone = fresh.openReviewWhenDone
+        checkForUpdates = fresh.checkForUpdates
+    }
+
+    private func save() {
+        guard !isLoading else { return }
+        let snapshot = Snapshot(outputFolderPath: outputFolder?.path,
+                                conflictPolicy: conflictPolicy,
+                                defaultLanguages: defaultLanguages,
+                                invert: invert,
+                                customWords: customWords,
+                                correctLowercaseL: correctLowercaseL,
+                                notifyWhenDone: notifyWhenDone,
+                                openReviewWhenDone: openReviewWhenDone,
+                                checkForUpdates: checkForUpdates,
+                                lastUpdateCheck: lastUpdateCheck,
+                                skippedUpdateVersion: skippedUpdateVersion)
+        if let data = try? JSONEncoder().encode(snapshot) {
+            defaults.set(data, forKey: Self.storageKey)
+        }
+    }
+}
