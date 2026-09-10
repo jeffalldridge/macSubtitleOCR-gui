@@ -554,3 +554,48 @@ private let fixtures = URL(fileURLWithPath: #filePath)
         #expect(cache.cachedURLs(for: "new", format: .vobsub) != nil)
     }
 }
+
+@Suite(.serialized) struct MidRunAdditionTests {
+    private func waitUntil(_ condition: @MainActor () -> Bool, timeout: TimeInterval = 30) async {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !condition(), Date() < deadline {
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+    }
+
+    @Test func aFileAddedDuringARunIsStillConverted() async throws {
+        let dir = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let name = "midrun-\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defaults.removePersistentDomain(forName: name)
+        let settings = AppSettings(defaults: defaults)
+        settings.outputFolder = dir.appendingPathComponent("out", isDirectory: true)
+        let queue = ConversionQueue(settings: settings,
+                                    cache: StreamCache(directory: dir.appendingPathComponent("cache")))
+
+        // Two copies of the fixture under different names, so both produce
+        // their own output.
+        let first = dir.appendingPathComponent("first.sup")
+        let second = dir.appendingPathComponent("second.sup")
+        try FileManager.default.copyItem(at: fixtures.appendingPathComponent("sintel.sup"), to: first)
+        try FileManager.default.copyItem(at: fixtures.appendingPathComponent("sintel.sup"), to: second)
+
+        queue.add(urls: [first])
+        await waitUntil { queue.files.first?.state != .probing }
+        queue.run()
+
+        // Dropped on the window while the first file is being recognized.
+        queue.add(urls: [second])
+        #expect(queue.files.count == 2)
+
+        await waitUntil { !queue.isRunning }
+        guard case .finished(let summary) = queue.runState else {
+            Issue.record("expected a finished run")
+            return
+        }
+        #expect(summary.saved == 2, "the late arrival is converted too, not silently skipped")
+        #expect(queue.allTracks.allSatisfy { $0.status == .done })
+        #expect(Set(summary.outputs.map(\.lastPathComponent)) == ["first.eng.srt", "second.eng.srt"])
+    }
+}

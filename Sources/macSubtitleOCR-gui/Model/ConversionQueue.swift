@@ -272,15 +272,18 @@ final class ConversionQueue {
                 }
                 progressTask.cancel()
 
-                // A file dropped on the window mid-run has finished probing by
-                // now; fold its included tracks into this run.
-                if !lateArrivals.isEmpty {
-                    let arrived = lateArrivals.filter { $0.state != .probing }
-                    lateArrivals.removeAll { file in arrived.contains { $0.id == file.id } }
-                    for track in arrived.flatMap(\.includedTracks) where !pending.contains(where: { $0 === track }) {
-                        track.status = .queued
-                        pending.append(track)
+                absorbLateArrivals(into: &pending)
+
+                // The last track is done but a file dropped a moment ago is
+                // still being probed. Give it a moment rather than ending the
+                // run and leaving its ticked tracks untouched.
+                if position + 1 >= pending.count, !lateArrivals.isEmpty, !Task.isCancelled {
+                    for _ in 0..<40 where lateArrivals.contains(where: { $0.state == .probing }) {
+                        try? await Task.sleep(for: .milliseconds(100))
                     }
+                    absorbLateArrivals(into: &pending)
+                    // Anything that failed to probe cannot be converted.
+                    lateArrivals.removeAll()
                 }
             }
 
@@ -289,6 +292,18 @@ final class ConversionQueue {
             runState = .finished(summary)
             finishedRunCount += 1
             runTask = nil
+        }
+    }
+
+    /// Move any newly probed file's included tracks into the running list.
+    private func absorbLateArrivals(into pending: inout [QueueTrack]) {
+        guard !lateArrivals.isEmpty else { return }
+        let arrived = lateArrivals.filter { $0.state != .probing }
+        guard !arrived.isEmpty else { return }
+        lateArrivals.removeAll { file in arrived.contains { $0.id == file.id } }
+        for track in arrived.flatMap(\.includedTracks) where !pending.contains(where: { $0 === track }) {
+            track.status = .queued
+            pending.append(track)
         }
     }
 
