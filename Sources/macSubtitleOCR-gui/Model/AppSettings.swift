@@ -18,7 +18,7 @@ final class AppSettings {
         }
     }
 
-    private struct Snapshot: Codable {
+    struct Snapshot: Codable, Equatable {
         var outputFolderPath: String?
         var conflictPolicy = ConflictPolicy.addSuffix
         var defaultLanguages = ["en"]
@@ -33,6 +33,36 @@ final class AppSettings {
     }
 
     static let storageKey = "com.tentstudios.macSubtitleOCR.settings.v1"
+
+    /// Releases up to 0.2 used the bundle identifier
+    /// `com.tentstudios.macSubtitleOCR-gui` and stored their OCR options
+    /// under this key. 1.0 uses a new identifier, so those preferences live
+    /// in a different domain and are carried over once, on first launch.
+    static let legacyDomain = "com.tentstudios.macSubtitleOCR-gui"
+    static let legacyOptionsKey = "macSubtitleOCRGUI.OCROptions.v1"
+
+    /// The shape v0.2 stored. Only the fields that still exist are carried over.
+    private struct LegacyOptions: Decodable {
+        var languages: String
+        var invert: Bool
+        var customWords: String?
+    }
+
+    /// Settings carried over from a pre-1.0 install, or nil when there are none.
+    static func migratedFromLegacy() -> Snapshot? {
+        guard let legacy = UserDefaults(suiteName: legacyDomain),
+              let data = legacy.data(forKey: legacyOptionsKey),
+              let options = try? JSONDecoder().decode(LegacyOptions.self, from: data) else {
+            return nil
+        }
+        var snapshot = Snapshot()
+        // v0.2 stored a comma-separated list of ISO 639 codes.
+        let languages = words(from: options.languages)
+        if !languages.isEmpty { snapshot.defaultLanguages = languages }
+        snapshot.invert = options.invert
+        snapshot.customWords = options.customWords ?? ""
+        return snapshot
+    }
 
     /// Nil means "next to the source file".
     var outputFolder: URL? { didSet { save() } }
@@ -58,6 +88,8 @@ final class AppSettings {
         if let data = defaults.data(forKey: Self.storageKey),
            let stored = try? JSONDecoder().decode(Snapshot.self, from: data) {
             snapshot = stored
+        } else if let carriedOver = Self.migratedFromLegacy() {
+            snapshot = carriedOver
         }
         outputFolder = snapshot.outputFolderPath.map { URL(fileURLWithPath: $0, isDirectory: true) }
         conflictPolicy = snapshot.conflictPolicy

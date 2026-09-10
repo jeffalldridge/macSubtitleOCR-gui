@@ -11,8 +11,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     private var pendingURLs: [URL] = []
 
     func applicationWillFinishLaunching(_ notification: Notification) {
-        UNUserNotificationCenter.current().delegate = self
         NSApp.servicesProvider = ServicesProvider()
+        // The notification centre is deliberately not touched here.
+        // `UNUserNotificationCenter.current()` raises
+        // NSInternalInconsistencyException ("bundleProxyForCurrentProcess is
+        // nil") when the process is not a real `.app`, which is exactly what
+        // `swift run` produces during development. Notifier attaches this
+        // delegate the first time a notification is actually posted.
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {

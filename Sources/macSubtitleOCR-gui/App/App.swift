@@ -35,7 +35,7 @@ struct MacSubtitleOCRApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
+        Window("macSubtitleOCR", id: MainWindow.windowID) {
             MainWindow()
                 .environment(settings)
                 .environment(queue)
@@ -48,6 +48,16 @@ struct MacSubtitleOCRApp: App {
         }
         .windowResizability(.contentMinSize)
         .defaultSize(width: 1040, height: 680)
+        // The main window must always open. Scene restoration can decide
+        // otherwise from a stale record — a bundle that once ran a different
+        // scene structure, for instance, as every install upgraded from 0.2
+        // has — and the app would then launch to nothing at all. This app has
+        // one main window and no documents, so there is nothing to restore.
+        .restorationBehavior(.disabled)
+        // Present the main window at launch, always. Without this, a stale
+        // per-app record can leave the app running with no window at all —
+        // an app that looks like it failed to open.
+        .defaultLaunchBehavior(.presented)
         .commands {
             AppCommands(queue: queue, ui: ui, settings: settings, updates: updates)
         }
@@ -64,6 +74,7 @@ struct MacSubtitleOCRApp: App {
         }
         .windowResizability(.contentSize)
         .defaultSize(width: 560, height: 640)
+        .restorationBehavior(.disabled)
     }
 }
 

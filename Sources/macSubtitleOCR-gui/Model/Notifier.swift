@@ -3,10 +3,30 @@ import UserNotifications
 
 /// Completion notices when the app is in the background, and Dock progress.
 enum Notifier {
+    /// True only inside a real `.app`. `UNUserNotificationCenter.current()`
+    /// raises an Objective-C exception outside one — which is what `swift run`
+    /// produces — and an exception cannot be caught from Swift, so the check
+    /// has to come first.
+    static var isAvailable: Bool {
+        Bundle.main.bundleURL.pathExtension == "app" && Bundle.main.bundleIdentifier != nil
+    }
+
+    private static var didAttachDelegate = false
+
+    /// Attach the app delegate the first time we need the centre.
+    private static func center() -> UNUserNotificationCenter? {
+        guard isAvailable else { return nil }
+        let center = UNUserNotificationCenter.current()
+        if !didAttachDelegate {
+            center.delegate = NSApp.delegate as? UNUserNotificationCenterDelegate
+            didAttachDelegate = true
+        }
+        return center
+    }
+
     static func runFinished(_ summary: ConversionQueue.RunSummary, settings: AppSettings) {
-        guard settings.notifyWhenDone, !NSApp.isActive else { return }
+        guard settings.notifyWhenDone, !NSApp.isActive, let center = center() else { return }
         Task {
-            let center = UNUserNotificationCenter.current()
             let status = await center.notificationSettings().authorizationStatus
             if status == .notDetermined {
                 _ = try? await center.requestAuthorization(options: [.alert, .sound])

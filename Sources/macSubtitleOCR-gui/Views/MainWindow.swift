@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct MainWindow: View {
+    static let windowID = "main"
+
     @Environment(ConversionQueue.self) private var queue
     @Environment(AppUIState.self) private var ui
     @Environment(AppSettings.self) private var settings
