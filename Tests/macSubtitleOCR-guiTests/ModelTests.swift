@@ -365,22 +365,19 @@ private let fixtures = URL(fileURLWithPath: #filePath)
         var disableICorrection: Bool
     }
 
-    private func writeLegacy(_ options: LegacyOptions) throws {
-        let legacy = try #require(UserDefaults(suiteName: AppSettings.legacyDomain))
-        legacy.set(try JSONEncoder().encode(options), forKey: AppSettings.legacyOptionsKey)
-    }
-
-    private func clearLegacy() {
-        UserDefaults(suiteName: AppSettings.legacyDomain)?
-            .removeObject(forKey: AppSettings.legacyOptionsKey)
+    /// A defaults suite holding only what v0.2 would have written.
+    private func legacyDefaults(_ options: LegacyOptions) throws -> UserDefaults {
+        let name = "legacy-tests-\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defaults.removePersistentDomain(forName: name)
+        defaults.set(try JSONEncoder().encode(options), forKey: AppSettings.legacyOptionsKey)
+        return defaults
     }
 
     @Test func carriesOverPreOneZeroOptions() throws {
-        try writeLegacy(LegacyOptions(languages: "en,jpn", invert: true,
-                                      customWords: "Sintel, Shaman", disableICorrection: false))
-        defer { clearLegacy() }
-
-        let migrated = try #require(AppSettings.migratedFromLegacy())
+        let defaults = try legacyDefaults(LegacyOptions(languages: "en,jpn", invert: true,
+                                                        customWords: "Sintel, Shaman", disableICorrection: false))
+        let migrated = try #require(AppSettings.migratedFromLegacy(in: defaults))
         #expect(migrated.defaultLanguages == ["en", "jpn"])
         #expect(migrated.invert)
         #expect(migrated.customWords == "Sintel, Shaman")
@@ -390,25 +387,23 @@ private let fixtures = URL(fileURLWithPath: #filePath)
     }
 
     @Test func emptyLanguagesKeepTheDefault() throws {
-        try writeLegacy(LegacyOptions(languages: "", invert: false, customWords: nil, disableICorrection: false))
-        defer { clearLegacy() }
-        let migrated = try #require(AppSettings.migratedFromLegacy())
+        let defaults = try legacyDefaults(LegacyOptions(languages: "", invert: false,
+                                                        customWords: nil, disableICorrection: false))
+        let migrated = try #require(AppSettings.migratedFromLegacy(in: defaults))
         #expect(migrated.defaultLanguages == ["en"])
         #expect(migrated.customWords.isEmpty)
     }
 
-    @Test func nothingToMigrateReturnsNil() {
-        clearLegacy()
-        #expect(AppSettings.migratedFromLegacy() == nil)
+    @Test func nothingToMigrateReturnsNil() throws {
+        let name = "legacy-empty-\(UUID())"
+        let defaults = try #require(UserDefaults(suiteName: name))
+        defaults.removePersistentDomain(forName: name)
+        #expect(AppSettings.migratedFromLegacy(in: defaults) == nil)
     }
 
     @Test func existingOneZeroSettingsWinOverMigration() throws {
-        try writeLegacy(LegacyOptions(languages: "de", invert: true, customWords: nil, disableICorrection: false))
-        defer { clearLegacy() }
-
-        let name = "migration-tests-\(UUID())"
-        let defaults = try #require(UserDefaults(suiteName: name))
-        defaults.removePersistentDomain(forName: name)
+        let defaults = try legacyDefaults(LegacyOptions(languages: "de", invert: true,
+                                                        customWords: nil, disableICorrection: false))
         let first = AppSettings(defaults: defaults)
         #expect(first.defaultLanguages == ["de"], "a fresh install inherits the old options")
         first.defaultLanguages = ["fr"]

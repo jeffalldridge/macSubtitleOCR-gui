@@ -51,7 +51,7 @@
 	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.tentstudios.macSubtitleOCR</string>
+	<string>com.tentstudios.macSubtitleOCR-gui</string>
 	<key>CFBundleName</key>
 	<string>macSubtitleOCR</string>
 	<key>CFBundlePackageType</key>

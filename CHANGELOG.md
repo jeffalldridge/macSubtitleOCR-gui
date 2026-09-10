@@ -71,14 +71,22 @@ you mux.
 - **Progress is per cue**, not per stage: "312 of 1,204 cues" rather than a
   three-step guess.
 - The app is named **macSubtitleOCR** throughout; `macSubtitleOCR-gui`
-  remains the repository and executable name.
-- **The bundle identifier is now `com.tentstudios.macSubtitleOCR`**, matching
-  the name. Your language, invert, and custom-word settings are carried over
-  automatically the first time 1.0 runs. The change also clears a stale
-  per-identifier association that could leave the app running with no window
-  at all.
+  remains the repository, bundle, and executable name.
+- Your language, invert, and custom-word settings from 0.x are carried over
+  the first time 1.0 runs.
 
 ### Fixed
+
+**The app could launch with no window at all.** On a Mac that had run
+earlier versions, the main window was sometimes never created: the app
+appeared in the Dock with its menu bar, and nothing else. The cause was
+AppKit's saved window state — the app now opts out of it, since a
+single-window utility has nothing worth restoring, and a bad record should
+never be able to hide the interface.
+
+**Notifications no longer break a source build.** Reading the notification
+centre during launch raises an exception outside a real `.app`, which killed
+`make run`.
 
 Five decoding bugs, found while porting the engine and fixed here. Each
 produced wrong output rather than an error, so they were invisible before:
@@ -102,7 +110,7 @@ produced wrong output rather than an error, so they were invisible before:
 ### Notes
 
 - Upgrading is safe: output naming is unchanged, no files need migrating, and
-  your recognition settings are carried across the identifier change.
+  your recognition settings carry over.
 - Version 0.2 users on macOS 14 should stay on
   [v0.2.0](https://github.com/jeffalldridge/macSubtitleOCR-gui/releases/tag/v0.2.0).
 

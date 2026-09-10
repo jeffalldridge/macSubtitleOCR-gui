@@ -34,11 +34,8 @@ final class AppSettings {
 
     static let storageKey = "com.tentstudios.macSubtitleOCR.settings.v1"
 
-    /// Releases up to 0.2 used the bundle identifier
-    /// `com.tentstudios.macSubtitleOCR-gui` and stored their OCR options
-    /// under this key. 1.0 uses a new identifier, so those preferences live
-    /// in a different domain and are carried over once, on first launch.
-    static let legacyDomain = "com.tentstudios.macSubtitleOCR-gui"
+    /// Releases up to 0.2 stored their OCR options under this key. Those
+    /// preferences are carried over once, on first launch of 1.0.
     static let legacyOptionsKey = "macSubtitleOCRGUI.OCROptions.v1"
 
     /// The shape v0.2 stored. Only the fields that still exist are carried over.
@@ -49,9 +46,8 @@ final class AppSettings {
     }
 
     /// Settings carried over from a pre-1.0 install, or nil when there are none.
-    static func migratedFromLegacy() -> Snapshot? {
-        guard let legacy = UserDefaults(suiteName: legacyDomain),
-              let data = legacy.data(forKey: legacyOptionsKey),
+    static func migratedFromLegacy(in defaults: UserDefaults = .standard) -> Snapshot? {
+        guard let data = defaults.data(forKey: legacyOptionsKey),
               let options = try? JSONDecoder().decode(LegacyOptions.self, from: data) else {
             return nil
         }
@@ -88,7 +84,7 @@ final class AppSettings {
         if let data = defaults.data(forKey: Self.storageKey),
            let stored = try? JSONDecoder().decode(Snapshot.self, from: data) {
             snapshot = stored
-        } else if let carriedOver = Self.migratedFromLegacy() {
+        } else if let carriedOver = Self.migratedFromLegacy(in: defaults) {
             snapshot = carriedOver
         }
         outputFolder = snapshot.outputFolderPath.map { URL(fileURLWithPath: $0, isDirectory: true) }

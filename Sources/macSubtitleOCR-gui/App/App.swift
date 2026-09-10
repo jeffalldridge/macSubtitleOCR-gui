@@ -13,6 +13,14 @@ enum EntryPoint {
             print(SelfCheck.versionString)
             exit(0)
         }
+        // Opt out of AppKit's persistent window state before AppKit starts.
+        //
+        // This app has one window and no documents, so there is nothing worth
+        // restoring — and a bad persistence record is not merely useless, it
+        // can stop the main window from ever being created, leaving the app
+        // running with no interface. That failure was reproducible here and
+        // survived deleting every user-level trace of the app.
+        UserDefaults.standard.register(defaults: ["ApplePersistenceIgnoreState": true])
         MacSubtitleOCRApp.main()
     }
 }
