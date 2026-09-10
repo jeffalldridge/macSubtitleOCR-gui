@@ -19,10 +19,17 @@ enum ConversionRunner {
 
         let source = file.source
         let info = track.info
+        // Each callback is its own unstructured task, so two of them can land
+        // out of order and show the bar going backwards. Only ever move it
+        // forwards.
         let progress: @Sendable (Double) -> Void = { value in
             Task { @MainActor in
-                if case .loading = track.loadState { track.loadState = .loading(value) }
-                if case .extracting = track.status { track.status = .extracting(value) }
+                if case .loading(let shown) = track.loadState, value > shown {
+                    track.loadState = .loading(value)
+                }
+                if case .extracting(let shown) = track.status, value > shown {
+                    track.status = .extracting(value)
+                }
             }
         }
 
@@ -53,21 +60,24 @@ enum ConversionRunner {
                 // our business. When it does not, every track costs a full
                 // pass over the file, so take them all while we are in there
                 // rather than paying that price once per track.
-                let uncached: [TrackInfo]
-                if source.indexes(tracks: [info]) {
-                    uncached = [info]
-                } else {
-                    uncached = siblings.filter { sibling in
-                        sibling.id == info.id || cache.cachedURLs(
-                            for: StreamCache.key(for: source.primaryURL, track: sibling),
-                            format: sibling.format) == nil
-                    }
+                //
+                // The engine decides, because it has to read the index either
+                // way; asking it here first meant opening the file and walking
+                // its index twice for every single track.
+                let alsoWorthTaking = siblings.filter { sibling in
+                    sibling.id != info.id && cache.cachedURLs(
+                        for: StreamCache.key(for: source.primaryURL, track: sibling),
+                        format: sibling.format) == nil
                 }
-                let extracted = try source.extract(tracks: uncached, progress: progress)
+                let extracted = try source.extract(tracks: [info],
+                                                   orAlso: alsoWorthTaking,
+                                                   progress: progress)
                 try Task.checkCancellation()
 
+                let byNumber = Dictionary(uniqueKeysWithValues:
+                    ([info] + alsoWorthTaking).map { ($0.id, $0) })
                 for (number, track) in extracted {
-                    guard let sibling = uncached.first(where: { $0.id == number }) else { continue }
+                    guard let sibling = byNumber[number] else { continue }
                     try? cache.store(track, key: StreamCache.key(for: source.primaryURL, track: sibling))
                 }
 

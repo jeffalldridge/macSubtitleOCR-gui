@@ -30,7 +30,7 @@ struct InspectorView: View {
             }
 
             Section("Output") {
-                OutputLocationPicker(folder: $queue.runOptions.outputFolder)
+                OutputLocationPicker(settings: settings)
 
                 Picker("If a file exists", selection: $queue.runOptions.conflictPolicy) {
                     ForEach(AppSettings.ConflictPolicy.allCases) { policy in
@@ -126,24 +126,37 @@ struct LanguageChecklist: View {
 }
 
 /// "Next to the source file" or a chosen folder.
+/// The same choice the toolbar menu offers, in the form a settings list wants.
+///
+/// Both write to `AppSettings.outputDestination`, so the two controls cannot
+/// end up saying different things about where the files go.
 struct OutputLocationPicker: View {
-    @Binding var folder: URL?
+    @Bindable var settings: AppSettings
 
     var body: some View {
         Picker("Save to", selection: Binding(
-            get: { folder == nil ? Choice.nextToSource : .folder },
+            get: { Choice(settings.outputDestination) },
             set: { choice in
                 switch choice {
-                case .nextToSource: folder = nil
+                case .nextToSource:
+                    settings.outputDestination = .nextToSource
+                case .askEachTime:
+                    settings.outputDestination = .askEachTime
                 case .folder:
-                    if let chosen = FileImport.presentFolderPanel() { folder = chosen }
+                    if let chosen = FileImport.presentFolderPanel() {
+                        settings.outputDestination = .folder(chosen)
+                    }
                 }
             }
         )) {
-            Text("Next to the source file").tag(Choice.nextToSource)
-            Text(folder.map { "Folder: \($0.lastPathComponent)" } ?? "Choose a folder…").tag(Choice.folder)
+            Text("Next to the film").tag(Choice.nextToSource)
+            Text("Ask each time").tag(Choice.askEachTime)
+            Text(settings.outputFolder.map { "Folder: \($0.lastPathComponent)" } ?? "Choose a folder…")
+                .tag(Choice.folder)
         }
-        if let folder {
+        .help(settings.outputDestination.detail)
+
+        if case .folder(let folder) = settings.outputDestination {
             LabeledContent("Folder") {
                 HStack {
                     Text(folder.path(percentEncoded: false))
@@ -151,7 +164,9 @@ struct OutputLocationPicker: View {
                         .truncationMode(.middle)
                         .foregroundStyle(.secondary)
                     Button("Change…") {
-                        if let chosen = FileImport.presentFolderPanel() { self.folder = chosen }
+                        if let chosen = FileImport.presentFolderPanel() {
+                            settings.outputDestination = .folder(chosen)
+                        }
                     }
                     .controlSize(.small)
                 }
@@ -162,5 +177,14 @@ struct OutputLocationPicker: View {
     private enum Choice: Hashable {
         case nextToSource
         case folder
+        case askEachTime
+
+        init(_ destination: OutputDestination) {
+            switch destination {
+            case .nextToSource: self = .nextToSource
+            case .folder: self = .folder
+            case .askEachTime: self = .askEachTime
+            }
+        }
     }
 }

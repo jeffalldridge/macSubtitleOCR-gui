@@ -6,6 +6,38 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **A destination menu in the toolbar**, next to the button that starts the
+  work, so where the subtitle files land is visible at the moment it matters.
+  Next to the film is the default. You can pick a folder, or ask to be asked
+  each time, and the run puts up a folder chooser before it starts.
+- **A play button.** The primary action is a filled play button in the top
+  right, and it becomes Stop in the same place while a run is going.
+
+### Fixed
+
+- **Crash while scrolling the queue.** Table cells and menus are rendered in
+  their own hosting contexts, and a view that looked up shared state from
+  inside one of those trapped when the state had not travelled with it. Every
+  cell, menu, and toolbar item is handed what it needs now.
+- **Track checkboxes could not be clicked.** The column was narrower than a
+  checkbox plus the padding a table puts around it, so the control was drawn
+  but clipped to almost nothing.
+- **Opening a file re-read its index once per track.** On a remux with
+  twenty-eight subtitle tracks that was fifty-six index walks and fifty-six
+  memory maps for one batch; it is one of each now.
+- **Files on a network share are no longer memory-mapped.** Every page fault
+  was a round trip, and a share that dropped mid-read killed the app outright.
+  Local disks, including external ones, still map.
+- **Revert All Edits can be undone**, like every other edit in the app.
+- **Reset All Settings asks first.**
+- The progress bar can no longer tick backwards.
+- Counts read correctly at one: "1 track, included" rather than "1, included",
+  and a lone text subtitle track is described in the singular.
+- The Recognize button says what is missing when it is disabled.
+- The accept checkbox in the clean-up sheet has an accessibility label.
+
 ### Changed
 
 - **The window is one column, not two.** The file list was a sidebar taking a

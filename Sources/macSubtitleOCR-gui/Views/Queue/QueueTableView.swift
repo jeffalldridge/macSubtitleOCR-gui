@@ -25,11 +25,21 @@ struct QueueTableView: View {
     @State private var collapsed: Set<UUID> = []
 
     var body: some View {
-        @Bindable var queue = queue
+        // Read the environment once, here, where it is certainly present, and
+        // hand the results to the closures below. Table cells and context
+        // menus are rendered in their own hosting contexts, and an
+        // `@Environment` read that happens inside one of those traps if the
+        // object was not carried across — which is what crashed the app while
+        // scrolling the queue.
+        @Bindable var selectionSource = queue
+        let queue = self.queue
+        let isRunning = queue.isRunning
 
-        Table(of: QueueRow.self, selection: $queue.selection) {
+        return Table(of: QueueRow.self, selection: $selectionSource.selection) {
             TableColumn("") { row in
-                includeCell(row)
+                includeCell(row, queue: queue, isRunning: isRunning)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .contentShape(Rectangle())
             }
             .width(QueueTableLayout.includeWidth)
 
@@ -87,16 +97,16 @@ struct QueueTableView: View {
             ForEach(queue.files) { file in
                 if file.tracks.isEmpty {
                     TableRow(QueueRow.file(file))
-                        .contextMenu { fileMenu(file) }
+                        .contextMenu { fileMenu(file, queue: queue, isRunning: isRunning) }
                 } else {
                     DisclosureTableRow(QueueRow.file(file), isExpanded: expansion(of: file)) {
                         ForEach(file.tracks) { track in
                             TableRow(QueueRow.track(track))
-                                .contextMenu { trackMenu(track, in: file) }
-                                .draggable(dragItem(for: track))
+                                .contextMenu { trackMenu(track, isRunning: isRunning) }
+                                .draggable(dragItem(for: track, in: file))
                         }
                     }
-                    .contextMenu { fileMenu(file) }
+                    .contextMenu { fileMenu(file, queue: queue, isRunning: isRunning) }
                 }
             }
         }
@@ -109,19 +119,18 @@ struct QueueTableView: View {
     // MARK: - Cells
 
     @ViewBuilder
-    private func includeCell(_ row: QueueRow) -> some View {
+    private func includeCell(_ row: QueueRow, queue: ConversionQueue, isRunning: Bool) -> some View {
         switch row {
         case .file(let file):
             if !file.tracks.isEmpty {
-                Toggle("", isOn: fileInclusion(file))
+                Toggle(isOn: fileInclusion(file, queue: queue)) { Text(verbatim: "") }
                     .toggleStyle(.checkbox)
-                    .labelsHidden()
-                    .disabled(queue.isRunning)
+                    .disabled(isRunning)
                     .help("Include every track in this file")
                     .accessibilityLabel("Include all tracks in \(file.displayName)")
             }
         case .track(let track):
-            TrackIncludeToggle(track: track)
+            TrackIncludeToggle(track: track, isRunning: isRunning)
         }
     }
 
@@ -172,8 +181,8 @@ struct QueueTableView: View {
 
     /// A finished track can be dragged out of the window as its SRT file; an
     /// unfinished one drags its source, which is at least something to drop.
-    private func dragItem(for track: QueueTrack) -> URL {
-        track.outputURL ?? queue.file(for: track)?.url ?? URL(fileURLWithPath: "/")
+    private func dragItem(for track: QueueTrack, in file: QueueFile) -> URL {
+        track.outputURL ?? file.url
     }
 
     // MARK: - Bindings
@@ -189,7 +198,7 @@ struct QueueTableView: View {
 
     /// Ticking a file ticks all of its tracks; the box shows filled only when
     /// every one of them is ticked.
-    private func fileInclusion(_ file: QueueFile) -> Binding<Bool> {
+    private func fileInclusion(_ file: QueueFile, queue: ConversionQueue) -> Binding<Bool> {
         Binding(
             get: { !file.tracks.isEmpty && file.tracks.allSatisfy(\.isIncluded) },
             set: { include in
@@ -215,26 +224,26 @@ struct QueueTableView: View {
     }
 
     @ViewBuilder
-    private func fileMenu(_ file: QueueFile) -> some View {
+    private func fileMenu(_ file: QueueFile, queue: ConversionQueue, isRunning: Bool) -> some View {
         Button("Include All Tracks") { queue.includeAll(in: file) }
-            .disabled(file.tracks.isEmpty || queue.isRunning)
+            .disabled(file.tracks.isEmpty || isRunning)
         Button("Include No Tracks") { queue.includeNone(in: file) }
-            .disabled(file.tracks.isEmpty || queue.isRunning)
+            .disabled(file.tracks.isEmpty || isRunning)
         Divider()
         Button("Reveal in Finder") {
             NSWorkspace.shared.activateFileViewerSelecting([file.url])
         }
         Divider()
         Button("Remove from Queue", role: .destructive) { queue.remove(file) }
-            .disabled(queue.isRunning)
+            .disabled(isRunning)
     }
 
     @ViewBuilder
-    private func trackMenu(_ track: QueueTrack, in file: QueueFile) -> some View {
+    private func trackMenu(_ track: QueueTrack, isRunning: Bool) -> some View {
         Button(track.isIncluded ? "Don’t Recognize This Track" : "Recognize This Track") {
             track.isIncluded.toggle()
         }
-        .disabled(queue.isRunning)
+        .disabled(isRunning)
         if let output = track.outputURL {
             Divider()
             Button("Reveal Subtitle File in Finder") {
@@ -245,17 +254,27 @@ struct QueueTableView: View {
 }
 
 /// Split out so ticking one track redraws one row rather than the table.
+///
+/// It takes `isRunning` as a value rather than reading the queue out of the
+/// environment. A table cell is rendered in its own hosting context, and an
+/// `@Environment(SomeObservable.self)` read from inside one traps when that
+/// context has not been given the object — which is what happened while
+/// scrolling the queue.
 private struct TrackIncludeToggle: View {
     @Bindable var track: QueueTrack
-    @Environment(ConversionQueue.self) private var queue
+    let isRunning: Bool
 
     var body: some View {
-        Toggle("", isOn: $track.isIncluded)
-            .toggleStyle(.checkbox)
-            .labelsHidden()
-            .disabled(queue.isRunning)
-            .help("Recognize this track")
-            .accessibilityLabel("Recognize \(track.title)")
+        Toggle(isOn: $track.isIncluded) {
+            // An empty label rather than `.labelsHidden()`: a hidden label
+            // still reserves nothing, but an empty one keeps the control's own
+            // sizing, and the checkbox stops being clipped to a sliver.
+            Text(verbatim: "")
+        }
+        .toggleStyle(.checkbox)
+        .disabled(isRunning)
+        .help("Recognize this track")
+        .accessibilityLabel("Recognize \(track.title)")
     }
 }
 

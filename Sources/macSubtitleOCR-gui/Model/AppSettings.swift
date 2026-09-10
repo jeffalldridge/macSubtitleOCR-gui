@@ -20,6 +20,9 @@ final class AppSettings {
 
     struct Snapshot: Codable, Equatable {
         var outputFolderPath: String?
+        /// Whether a run asks for a folder before it starts. Decodes to false
+        /// for anyone upgrading, which keeps their current behaviour.
+        var asksForOutputFolder = false
         var conflictPolicy = ConflictPolicy.addSuffix
         var defaultLanguages = ["en"]
         var invert = false
@@ -62,6 +65,7 @@ final class AppSettings {
 
     /// Nil means "next to the source file".
     var outputFolder: URL? { didSet { save() } }
+    var asksForOutputFolder = false { didSet { save() } }
     var conflictPolicy: ConflictPolicy { didSet { save() } }
     /// BCP 47 identifiers Vision should try, in order.
     var defaultLanguages: [String] { didSet { save() } }
@@ -88,6 +92,7 @@ final class AppSettings {
             snapshot = carriedOver
         }
         outputFolder = snapshot.outputFolderPath.map { URL(fileURLWithPath: $0, isDirectory: true) }
+        asksForOutputFolder = snapshot.asksForOutputFolder
         conflictPolicy = snapshot.conflictPolicy
         defaultLanguages = snapshot.defaultLanguages
         invert = snapshot.invert
@@ -115,6 +120,7 @@ final class AppSettings {
     func resetToDefaults() {
         let fresh = Snapshot()
         outputFolder = nil
+        asksForOutputFolder = fresh.asksForOutputFolder
         conflictPolicy = fresh.conflictPolicy
         defaultLanguages = fresh.defaultLanguages
         invert = fresh.invert
@@ -128,6 +134,7 @@ final class AppSettings {
     private func save() {
         guard !isLoading else { return }
         let snapshot = Snapshot(outputFolderPath: outputFolder?.path,
+                                asksForOutputFolder: asksForOutputFolder,
                                 conflictPolicy: conflictPolicy,
                                 defaultLanguages: defaultLanguages,
                                 invert: invert,
@@ -140,6 +147,30 @@ final class AppSettings {
                                 skippedUpdateVersion: skippedUpdateVersion)
         if let data = try? JSONEncoder().encode(snapshot) {
             defaults.set(data, forKey: Self.storageKey)
+        }
+    }
+}
+
+extension AppSettings {
+    /// Where runs write, as one value rather than two fields that can
+    /// disagree.
+    var outputDestination: OutputDestination {
+        get {
+            if asksForOutputFolder { return .askEachTime }
+            if let outputFolder { return .folder(outputFolder) }
+            return .nextToSource
+        }
+        set {
+            switch newValue {
+            case .nextToSource:
+                asksForOutputFolder = false
+                outputFolder = nil
+            case .folder(let url):
+                asksForOutputFolder = false
+                outputFolder = url
+            case .askEachTime:
+                asksForOutputFolder = true
+            }
         }
     }
 }

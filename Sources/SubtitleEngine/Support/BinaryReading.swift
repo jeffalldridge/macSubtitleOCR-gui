@@ -58,12 +58,28 @@ extension Data {
         guard FileManager.default.fileExists(atPath: url.path) else {
             throw EngineError.fileNotFound(url)
         }
+        // A file served over the network is the one case where mapping is both
+        // slow and dangerous: every page fault is a round trip, and a share
+        // that drops mid-read raises SIGBUS, which no error handling can
+        // catch. A local disk, including an external one, is worth the trade.
+        if isRemote(url) {
+            return try Data(contentsOf: url, options: [.mappedIfSafe])
+        }
         do {
             return try Data(contentsOf: url, options: [.alwaysMapped])
         } catch {
             // Some volumes cannot be mapped at all; a plain read still works.
             return try Data(contentsOf: url, options: [.mappedIfSafe])
         }
+    }
+
+    private static func isRemote(_ url: URL) -> Bool {
+        let keys: Set<URLResourceKey> = [.volumeIsLocalKey, .isUbiquitousItemKey]
+        guard let values = try? url.resourceValues(forKeys: keys) else { return false }
+        if values.isUbiquitousItem == true { return true }
+        // `volumeIsLocal` is false for network shares and nil when unknown;
+        // only a definite "not local" changes what we do.
+        return values.volumeIsLocal == false
     }
 }
 

@@ -78,7 +78,7 @@ struct TrackDetailView: View {
             Spacer(minLength: DetailPaneMetrics.horizontalPadding)
 
             HStack(spacing: DetailPaneMetrics.titleSpacing) {
-                CueSearchField(text: $search)
+                CueSearchField(text: $search, focusRequests: ui.focusSearchRequests)
                     .disabled(track.stream == nil)
 
                 Toggle(isOn: $ui.showNeedsReviewOnly) {
@@ -224,7 +224,9 @@ struct TrackDetailView: View {
 /// beneath it is easier to connect to what it does.
 struct CueSearchField: View {
     @Binding var text: String
-    @Environment(AppUIState.self) private var ui
+    /// Bumped by the Find command. Taken as a value rather than read from the
+    /// environment, so the field cannot trap wherever it is hosted.
+    let focusRequests: Int
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -252,7 +254,7 @@ struct CueSearchField: View {
         .padding(.horizontal, 6)
         .padding(.vertical, 3)
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 6))
-        .onChange(of: ui.focusSearchRequests) { _, _ in focused = true }
+        .onChange(of: focusRequests) { _, _ in focused = true }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Search cues")
     }
@@ -267,26 +269,25 @@ struct CueRowModel: Identifiable {
 /// Reveal, translate, and clean-up actions for a finished track.
 struct TrackActionsMenu: View {
     @Environment(ConversionQueue.self) private var queue
+    @Environment(\.undoManager) private var undoManager
     let track: QueueTrack
     let file: QueueFile
     @State private var showTranslate = false
     @State private var showCleanup = false
 
     var body: some View {
-        Menu {
+        // A menu's items are built and run in their own hosting context, so
+        // the queue is captured here rather than looked up in there.
+        let queue = self.queue
+        return Menu {
             Button("Translate…", systemImage: "character.book.closed") { showTranslate = true }
             if #available(macOS 26, *), CleanupAssistant.isAvailable {
                 Button("Clean Up with Apple Intelligence…", systemImage: "sparkles") { showCleanup = true }
                     .disabled(track.reviewCount == 0)
             }
             Divider()
-            Button("Revert All Edits") {
-                for cue in track.cues { cue.revert() }
-                // The table shows the recognized text again; the file has to
-                // agree, or the two diverge with nothing on screen saying so.
-                queue.saveEdits(for: track)
-            }
-            .disabled(track.editedCount == 0)
+            Button("Revert All Edits") { revertAll(queue) }
+                .disabled(track.editedCount == 0)
         } label: {
             Label("Actions", systemImage: "ellipsis.circle")
         }
@@ -300,5 +301,23 @@ struct TrackActionsMenu: View {
                 CleanupSuggestionsView(track: track)
             }
         }
+    }
+
+    /// Throwing away every correction the user made is the most destructive
+    /// thing in this window, and it was the one edit with no way back.
+    private func revertAll(_ queue: ConversionQueue) {
+        let previous = track.cues.map { ($0, $0.text) }
+        for cue in track.cues { cue.revert() }
+        // The table shows the recognized text again; the file has to agree, or
+        // the two diverge with nothing on screen saying so.
+        queue.saveEdits(for: track)
+        guard let undoManager else { return }
+        undoManager.registerUndo(withTarget: track) { _ in
+            Task { @MainActor in
+                for (cue, text) in previous { cue.text = text }
+                queue.saveEdits(for: track)
+            }
+        }
+        undoManager.setActionName("Revert All Edits")
     }
 }

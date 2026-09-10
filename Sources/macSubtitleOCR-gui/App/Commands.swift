@@ -59,11 +59,11 @@ struct AppCommands: Commands {
         }
 
         CommandMenu("Track") {
-            Button("Recognize") { queue.run() }
+            Button("Make Subtitles") { startRun() }
                 .keyboardShortcut("r")
                 .disabled(!queue.canRun)
 
-            Button("Cancel Recognition") { queue.cancel() }
+            Button("Stop") { queue.cancel() }
                 .keyboardShortcut(".")
                 .disabled(!queue.isRunning)
 
@@ -97,6 +97,18 @@ struct AppCommands: Commands {
             Divider()
             Button("Acknowledgements") { openWindow(id: AcknowledgementsView.windowID) }
         }
+    }
+
+    /// Starting from the menu asks where to save on the same terms as the
+    /// toolbar button does; two ways in, one behaviour.
+    private func startRun() {
+        if settings.outputDestination.asksBeforeRunning {
+            guard let folder = FileImport.presentFolderPanel() else { return }
+            queue.runOptions.outputFolder = folder
+        } else {
+            queue.runOptions.outputFolder = settings.outputDestination.resolvedFolder
+        }
+        queue.run()
     }
 
     /// What Remove would act on: the selected file, or the one holding the

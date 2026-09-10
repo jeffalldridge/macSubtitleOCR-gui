@@ -96,8 +96,23 @@ public enum SubtitleSource: Sendable, Equatable, Hashable {
     /// doing it again per track.
     public func extract(tracks: [TrackInfo],
                         progress: (@Sendable (Double) -> Void)? = nil) throws -> [Int: ExtractedTrack] {
+        try extract(tracks: tracks, orAlso: [], progress: progress)
+    }
+
+    /// Extract `tracks`, and if the container has no index to take us straight
+    /// to them, extract `orAlso` in the same pass.
+    ///
+    /// Whether the index helps and where the blocks are is one question, asked
+    /// once. Asking it separately meant opening the file and reading its index
+    /// twice for every track — fifty-six times over for a remux with
+    /// twenty-eight subtitle tracks.
+    public func extract(tracks: [TrackInfo],
+                        orAlso: [TrackInfo],
+                        progress: (@Sendable (Double) -> Void)? = nil) throws -> [Int: ExtractedTrack] {
         guard case .mkv(let url) = self, !tracks.isEmpty else { return [:] }
-        return try MKVReader(url: url).extract(trackNumbers: tracks.map(\.id), progress: progress)
+        return try MKVReader(url: url).extract(trackNumbers: tracks.map(\.id),
+                                               orAlso: orAlso.map(\.id),
+                                               progress: progress)
     }
 
     /// Open a decodable stream for `track`.

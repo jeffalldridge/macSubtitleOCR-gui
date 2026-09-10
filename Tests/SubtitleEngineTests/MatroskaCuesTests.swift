@@ -296,4 +296,57 @@ import Testing
         #expect(try PGSStream(data: extracted).cues.count == 1,
                 "the subtitle is found anyway, by reading the file")
     }
+
+    // MARK: - Taking the other tracks along
+
+    @Test func anIndexedTrackIsTakenAloneEvenWhenOthersAreOffered() throws {
+        let data = Self.indexedFile(trackCount: 2, clusterCount: 3) { count in
+            (0..<count).flatMap { index in
+                [(time: UInt64(index), track: UInt64(1), position: index),
+                 (time: UInt64(index), track: UInt64(2), position: index)]
+            }
+        }
+        let reader = try MKVReader(data: data, url: URL(fileURLWithPath: "/both.mkv"))
+        let extracted = try reader.extract(trackNumbers: [1], orAlso: [2])
+        #expect(extracted.keys.sorted() == [1],
+                "the index reaches track 1 directly, so track 2 is nobody's business")
+    }
+
+    @Test func anUnindexedTrackBringsTheOthersWithIt() throws {
+        // No cues at all: one scan of the file, so everything offered comes
+        // out of it rather than costing another scan each.
+        let entries = [1, 2, 3].map { EBMLBuilder.subtitleTrack(number: UInt64($0), codec: "S_HDMV/PGS") }
+        var clusters: [[UInt8]] = []
+        for index in 0..<2 {
+            clusters.append(EBMLBuilder.cluster(timestamp: UInt64(index) * 1000, blocks: [1, 2, 3].flatMap { track in
+                [EBMLBuilder.simpleBlock(track: UInt8(track), relativeTimestamp: 0,
+                                         payload: Self.displaySet(pts: TimeInterval(index))),
+                 EBMLBuilder.simpleBlock(track: UInt8(track), relativeTimestamp: 500,
+                                         payload: PGSBuilder.bareSegments(PGSBuilder.clear(pts: TimeInterval(index) + 0.5)))]
+            }))
+        }
+        let data = EBMLBuilder.file([EBMLBuilder.info(), EBMLBuilder.tracks(entries)] + clusters)
+
+        let reader = try MKVReader(data: data, url: URL(fileURLWithPath: "/noindex.mkv"))
+        #expect(!reader.indexes(trackNumbers: [1]))
+        let extracted = try reader.extract(trackNumbers: [1], orAlso: [2, 3])
+        #expect(extracted.keys.sorted() == [1, 2, 3])
+        for number in [1, 2, 3] {
+            guard case .pgs(let bytes) = try #require(extracted[number]) else {
+                Issue.record("expected PGS for track \(number)")
+                continue
+            }
+            #expect(try PGSStream(data: bytes).cues.count == 2, "track \(number) came out whole")
+        }
+    }
+
+    @Test func aTrackOfferedButNotPresentIsSimplySkipped() throws {
+        let data = Self.indexedFile(clusterCount: 2) { _ in [] }
+        let reader = try MKVReader(data: data, url: URL(fileURLWithPath: "/one.mkv"))
+        let extracted = try reader.extract(trackNumbers: [1], orAlso: [9])
+        #expect(extracted.keys.sorted() == [1], "an offer is not a demand")
+        #expect(throws: EngineError.trackNotFound(9)) {
+            _ = try reader.extract(trackNumbers: [9], orAlso: [1])
+        }
+    }
 }

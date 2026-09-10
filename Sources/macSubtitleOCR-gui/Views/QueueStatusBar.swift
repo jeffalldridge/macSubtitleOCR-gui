@@ -24,7 +24,7 @@ struct QueueStatusBar: View {
             }
             .padding(.horizontal, StatusBarLayout.horizontalPadding)
             .padding(.vertical, StatusBarLayout.verticalPadding)
-            .frame(height: StatusBarLayout.height)
+            .frame(minHeight: StatusBarLayout.height)
         }
         .controlSize(.small)
         .background(.bar)
@@ -51,6 +51,7 @@ struct QueueStatusBar: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .foregroundStyle(.secondary)
+                .monospacedDigit()
                 .help(queue.activity)
         case .finished(let summary):
             Image(systemName: summary.failed > 0 ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
@@ -61,7 +62,10 @@ struct QueueStatusBar: View {
                 Text(detail).foregroundStyle(.secondary).lineLimit(1)
             }
         case .idle:
-            Text(idleSummary).foregroundStyle(.secondary).lineLimit(1)
+            Text(idleSummary)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+                .lineLimit(1)
         }
     }
 
@@ -86,20 +90,31 @@ struct QueueStatusBar: View {
 
     // MARK: - Right
 
+    /// Housekeeping only. Stopping a run is the toolbar's job, where starting
+    /// it was — one Stop button on screen, in the place the eye already knows.
     @ViewBuilder
     private var actions: some View {
         switch queue.runState {
         case .running:
-            Button("Cancel") { queue.cancel() }
-                .keyboardShortcut(.cancelAction)
+            EmptyView()
         case .finished(let summary):
             if !summary.outputs.isEmpty {
-                Button(summary.outputs.count > 1 ? "Reveal All in Finder" : "Reveal in Finder") {
+                Button(summary.outputs.count > 1 ? "Reveal All" : "Reveal",
+                       systemImage: "arrow.up.forward.app") {
                     NSWorkspace.shared.activateFileViewerSelecting(summary.outputs)
                 }
+                .labelStyle(.titleAndIcon)
+                .help("Show the subtitle files in the Finder")
             }
             Button("Clear Queue") { queue.clear() }
         case .idle:
+            if !queue.outputs.isEmpty {
+                Button("Reveal", systemImage: "arrow.up.forward.app") {
+                    NSWorkspace.shared.activateFileViewerSelecting(queue.outputs)
+                }
+                .labelStyle(.titleAndIcon)
+                .help("Show the subtitle files in the Finder")
+            }
             if !queue.isEmpty {
                 Button("Clear Queue") { queue.clear() }
             }

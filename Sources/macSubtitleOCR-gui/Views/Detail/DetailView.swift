@@ -106,8 +106,9 @@ struct FileDetailView: View {
     private var trackSummary: String {
         let included = file.includedTracks.count
         let total = file.tracks.count
-        if included == total { return total == 1 ? "1, included" : "\(total), all included" }
-        return "\(included) of \(total) included"
+        if total == 1 { return included == 1 ? "1 track, included" : "1 track, not included" }
+        if included == total { return "\(total) tracks, all included" }
+        return "\(included) of \(total) tracks included"
     }
 
     private var runLabel: String {
@@ -122,9 +123,9 @@ struct FileDetailView: View {
             if codec == "S_DVBSUB" { return "DVB bitmap" }
             return codec
         }).sorted().joined(separator: ", ")
-        let noun = count == 1 ? "track" : "tracks"
-        let verb = count == 1 ? "is" : "are"
-        let need = count == 1 ? "does" : "do"
-        return "\(count) other subtitle \(noun) (\(kinds)) \(verb) not bitmap subtitles and \(need) not need recognition."
+        if count == 1 {
+            return "This file also has a \(kinds) subtitle track. It is already text, so it needs no recognition."
+        }
+        return "This file also has \(count) other subtitle tracks (\(kinds)). They are already text, so they need no recognition."
     }
 }

@@ -23,7 +23,7 @@ struct GeneralSettingsView: View {
 
         Form {
             Section("Output") {
-                OutputLocationPicker(folder: $settings.outputFolder)
+                OutputLocationPicker(settings: settings)
                 Picker("If a file exists", selection: $settings.conflictPolicy) {
                     ForEach(AppSettings.ConflictPolicy.allCases) { policy in
                         Text(policy.label).tag(policy)
@@ -83,6 +83,7 @@ struct GeneralSettingsView: View {
 }
 
 struct RecognitionSettingsView: View {
+    @State private var confirmingReset = false
     @Environment(AppSettings.self) private var settings
 
     var body: some View {
@@ -105,9 +106,15 @@ struct RecognitionSettingsView: View {
             }
 
             Section {
-                Button("Reset All Settings") { settings.resetToDefaults() }
+                Button("Reset All Settings…", role: .destructive) { confirmingReset = true }
             }
         }
         .formStyle(.grouped)
+        .confirmationDialog("Reset all settings?", isPresented: $confirmingReset) {
+            Button("Reset All Settings", role: .destructive) { settings.resetToDefaults() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Your output folder, default languages, custom words, and every other preference go back to how they started. This cannot be undone.")
+        }
     }
 }

@@ -49,13 +49,32 @@ extension MKVReader {
     /// of them together costs one.
     public func extract(trackNumbers: [Int],
                         progress: (@Sendable (Double) -> Void)? = nil) throws -> [Int: ExtractedTrack] {
+        try extract(trackNumbers: trackNumbers, orAlso: [], progress: progress)
+    }
+
+    /// Extract `trackNumbers`, and if the file's index cannot take us straight
+    /// to them, extract `orAlso` in the same pass.
+    ///
+    /// Deciding needs the `Cues` index, and so does the read. Asking the
+    /// question separately meant opening the file and walking its whole index
+    /// twice per track: on a remux with twenty-eight subtitle tracks, fifty-six
+    /// index walks and fifty-six memory maps for one batch. Here the file is
+    /// opened once, the index is read once, and the answer is used where it
+    /// was computed.
+    public func extract(trackNumbers: [Int],
+                        orAlso: [Int],
+                        progress: (@Sendable (Double) -> Void)? = nil) throws -> [Int: ExtractedTrack] {
         let info = try probe()
+        let byNumber = Dictionary(uniqueKeysWithValues: info.tracks.map { (UInt64($0.id), $0) })
+
+        func track(_ number: Int) throws -> TrackInfo {
+            guard let track = byNumber[UInt64(number)] else { throw EngineError.trackNotFound(number) }
+            return track
+        }
+
         var wanted: [UInt64: TrackInfo] = [:]
         for number in trackNumbers {
-            guard let track = info.tracks.first(where: { $0.id == number }) else {
-                throw EngineError.trackNotFound(number)
-            }
-            wanted[UInt64(number)] = track
+            wanted[UInt64(number)] = try track(number)
         }
         guard !wanted.isEmpty else { return [:] }
 
@@ -77,15 +96,29 @@ extension MKVReader {
             // If the file indexes these tracks, read only the clusters that
             // hold them. On a 30 GB remux that is the difference between a
             // few hundred megabytes and the whole file.
-            let indexedClusters = MatroskaCues.parse(reader: reader, segment: segment)?
-                .clusters(forTracks: Array(wanted.keys))
-
             var output: [UInt64: Data] = [:]
             var idxLines: [UInt64: String] = [:]
             for number in wanted.keys {
                 output[number] = Data()
                 idxLines[number] = ""
             }
+
+            let cues = MatroskaCues.parse(reader: reader, segment: segment)
+            var indexedClusters = cues?.clusters(forTracks: Array(wanted.keys))
+
+            if indexedClusters == nil, !orAlso.isEmpty {
+                // Without the index every track costs a full pass over the
+                // file, so take the others while we are already reading it
+                // rather than paying that price again for each of them.
+                for number in orAlso where wanted[UInt64(number)] == nil {
+                    guard let extra = byNumber[UInt64(number)] else { continue }
+                    wanted[UInt64(number)] = extra
+                    output[UInt64(number)] = Data()
+                    idxLines[UInt64(number)] = ""
+                }
+                indexedClusters = cues?.clusters(forTracks: Array(wanted.keys))
+            }
+
             var cancelled = false
             var lastReported = -1
             let total = Double(max(bytes.count, 1))

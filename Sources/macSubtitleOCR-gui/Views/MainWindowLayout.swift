@@ -41,8 +41,10 @@ enum MainWindowLayout {
 /// The queue table's columns. Minimums are what the widest ordinary value
 /// needs; maximums stop a column from eating the space the name column wants.
 enum QueueTableLayout {
-    /// A checkbox and its focus ring.
-    static let includeWidth: CGFloat = 26
+    /// A checkbox, its focus ring, and the padding a table puts around cell
+    /// content. Narrower than this and the control is clipped, which leaves it
+    /// visible but with almost nothing left to click.
+    static let includeWidth: CGFloat = 36
     /// Long film names are the norm, so this column takes what is left over.
     static let nameMinimumWidth: CGFloat = 220
     static let nameIdealWidth: CGFloat = 380
@@ -110,8 +112,11 @@ enum CuePreviewLayout {
 enum StatusBarLayout {
     /// One line of small controls plus its separator.
     static let height: CGFloat = 30
-    static let horizontalPadding: CGFloat = 14
-    static let verticalPadding: CGFloat = 5
+    /// Wider than the panes above it. The window's bottom corners are rounded,
+    /// so text run to the same margin as the table would appear to drift into
+    /// the curve; setting it in keeps the first and last items clear of it.
+    static let horizontalPadding: CGFloat = 20
+    static let verticalPadding: CGFloat = 6
     static let itemSpacing: CGFloat = 10
     /// Wide enough to show meaningful movement, narrow enough to leave the
     /// activity text room.

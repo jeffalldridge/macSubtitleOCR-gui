@@ -69,7 +69,11 @@ struct CleanupSuggestionsView: View {
             }
         }
         .padding(20)
+        // A minimum, not an exact size: the header and the button row sit
+        // outside the scrolling list, and at large text sizes a fixed height
+        // clips them.
         .frame(width: 640, height: 480)
+        .frame(minHeight: 480)
         .task { await run() }
     }
 
@@ -84,6 +88,8 @@ struct CleanupSuggestionsView: View {
                 ))
                 .toggleStyle(.checkbox)
                 .labelsHidden()
+                .help("Accept this correction")
+                .accessibilityLabel("Accept the correction for cue \(suggestion.cueIndex + 1)")
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Cue \(suggestion.cueIndex + 1)").font(.caption).foregroundStyle(.secondary)
                     Text(suggestion.original).strikethrough().foregroundStyle(.secondary)

@@ -19,9 +19,15 @@ struct MainWindow: View {
     @State private var isDropTargeted = false
 
     var body: some View {
+        // Everything the toolbar needs is read here, in the window's own body,
+        // and handed over as values. Toolbar items are hosted separately from
+        // the window's view tree, and an `@Environment` read that happens
+        // inside one of those traps if the object did not travel with it.
         @Bindable var ui = ui
+        let queue = self.queue
+        let removable = selectedFileForRemoval
 
-        VStack(spacing: 0) {
+        return VStack(spacing: 0) {
             if queue.isEmpty {
                 EmptyQueueView(isTargeted: isDropTargeted)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -58,7 +64,7 @@ struct MainWindow: View {
             }
         }
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: isDropTargeted)
-        .toolbar { toolbar }
+        .toolbar { toolbar(queue: queue, ui: self.ui, removable: removable) }
         .inspector(isPresented: $ui.isInspectorPresented) {
             InspectorView()
                 .inspectorColumnWidth(min: MainWindowLayout.inspectorMinimumWidth,
@@ -78,7 +84,9 @@ struct MainWindow: View {
     }
 
     @ToolbarContentBuilder
-    private var toolbar: some ToolbarContent {
+    private func toolbar(queue: ConversionQueue,
+                         ui: AppUIState,
+                         removable: QueueFile?) -> some ToolbarContent {
         ToolbarItemGroup(placement: .navigation) {
             Button {
                 FileImport.presentOpenPanel(into: queue)
@@ -89,30 +97,35 @@ struct MainWindow: View {
             .disabled(queue.isRunning)
 
             Button {
-                removeSelectedFile()
+                if let removable { queue.remove(removable) }
             } label: {
                 Label("Remove", systemImage: "minus")
             }
             .help("Remove the selected file from the queue")
-            .disabled(queue.isRunning || selectedFileForRemoval == nil)
+            .disabled(queue.isRunning || removable == nil)
         }
 
+        ToolbarItem {
+            OutputDestinationMenu(settings: settings, isRunning: queue.isRunning)
+        }
+
+        // The one button that starts the work, top right, filled in and
+        // unmistakable. It becomes Stop in the same place, so the eye never
+        // has to go looking for the control that ends what it started.
         ToolbarItem(placement: .primaryAction) {
             if queue.isRunning {
-                Button {
+                Button("Stop", systemImage: "stop.fill", role: .destructive) {
                     queue.cancel()
-                } label: {
-                    Label("Cancel", systemImage: "xmark.circle")
                 }
-                .help("Stop recognizing (⌘.)")
+                .buttonStyle(.bordered)
+                .help("Stop recognizing and leave the rest of the queue (⌘.)")
             } else {
-                Button {
-                    queue.run()
-                } label: {
-                    Label(recognizeLabel, systemImage: "text.viewfinder")
+                Button(recognizeLabel(queue), systemImage: "play.fill") {
+                    startRun(queue)
                 }
-                .help("Recognize the included tracks (⌘R)")
+                .buttonStyle(.borderedProminent)
                 .disabled(!queue.canRun)
+                .help(runHelp(queue))
             }
         }
 
@@ -134,14 +147,38 @@ struct MainWindow: View {
         return nil
     }
 
-    private func removeSelectedFile() {
-        guard let file = selectedFileForRemoval else { return }
-        queue.remove(file)
+    /// A disabled button that will not say why is a dead end. This says what
+    /// is missing instead.
+    private func runHelp(_ queue: ConversionQueue) -> String {
+        if queue.files.contains(where: { $0.state == .probing }) {
+            return "Still reading the files you added"
+        }
+        if queue.includedTracks.isEmpty {
+            return "Tick at least one track in the list above"
+        }
+        return "Recognize every ticked track and write its subtitle file (⌘R)"
     }
 
-    private var recognizeLabel: String {
+    /// Ask for the folder first when that is what the user asked for. The
+    /// panel has to come up before the run starts, not part-way through it.
+    private func startRun(_ queue: ConversionQueue) {
+        if settings.outputDestination.asksBeforeRunning {
+            guard let folder = FileImport.presentFolderPanel() else { return }
+            queue.runOptions.outputFolder = folder
+        } else {
+            queue.runOptions.outputFolder = settings.outputDestination.resolvedFolder
+        }
+        queue.run()
+    }
+
+    /// "Make 3 Subtitle Files" says what lands on disk. "Recognize" describes
+    /// what the computer does, which is not what the user came for.
+    private func recognizeLabel(_ queue: ConversionQueue) -> String {
         let count = queue.includedTracks.count
-        return count > 1 ? "Recognize \(count) Tracks" : "Recognize"
+        switch count {
+        case 0, 1: return "Make Subtitles"
+        default: return "Make \(count) Subtitle Files"
+        }
     }
 
     private func runDidFinish() {
