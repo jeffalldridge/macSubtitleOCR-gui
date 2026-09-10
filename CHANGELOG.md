@@ -6,6 +6,101 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-09-10
+
+The app stops being a front-end for command-line tools and becomes a complete
+macOS application. It reads Matroska containers, decodes PGS and VobSub, and
+runs Apple Vision itself — then lets you check and correct every cue before
+you mux.
+
+### Removed
+
+- **The MKVToolNix requirement.** The app no longer shells out to `mkvmerge`
+  or `mkvextract`, so there is nothing to install with Homebrew. The
+  "MKVToolNix is required" card is gone.
+- **The bundled `macSubtitleOCR` command-line binary** and the git submodule
+  that produced it. The engine is now Swift source compiled into the app.
+
+### Added
+
+- **Cue review.** Every recognized cue is listed with the exact bitmap the
+  recognizer read, its timing, and its text. Cues Vision was unsure about are
+  flagged. Edit any cue inline and the `.srt` is rewritten as you type, with
+  full undo.
+- **Cue preview before recognition.** As soon as a track is indexed, its cues
+  and their images are browsable — so you can confirm a track is the one you
+  want before spending time on it.
+- **Batch conversion.** Add any number of files, or drop a folder to queue a
+  whole season. Files and their tracks appear as an outline in the sidebar.
+- **A real macOS window.** `NavigationSplitView` with a sidebar, a detail
+  view, an inspector for recognition and output options (⌥⌘I), and a status
+  bar with overall progress and a Cancel button.
+- **Settings** (⌘,) for output location, conflict policy, default languages,
+  invert, custom words, notifications, and updates.
+- **Finder integration.** Open With for MKV, MKS, SUP, SUB, and IDX; a
+  Services menu item ("Recognize Subtitles"); Open Recent; Dock drops.
+- **A Shortcuts action**, "Recognize Subtitles", that converts files without
+  opening a window.
+- **Notifications** when a run finishes in the background, and a progress bar
+  on the Dock icon while it runs.
+- **Clean Up with Apple Intelligence** (macOS 26): the on-device model
+  proposes fixes for character-level mistakes in flagged cues, shown as
+  before/after suggestions you accept or reject one at a time.
+- **Translate…**: exports a translated copy of a recognized track using the
+  on-device Translation framework.
+- **An Acknowledgements window** and an About panel crediting the upstream
+  project, with full license texts.
+- **A universal binary.** The published `.dmg` runs natively on Apple silicon
+  and Intel.
+- **Track languages drive recognition.** A track tagged `jpn` is recognized as
+  Japanese even when your default is English.
+- **An output folder option.** Write every `.srt` to one folder instead of
+  next to each source.
+- **An update check** against the project's GitHub releases, once a day, with
+  an opt-out in Settings. It never downloads or installs anything.
+
+### Changed
+
+- **Minimum macOS is now 15 (Sequoia)**, for Vision's current recognition API
+  and its per-line confidence scores.
+- **Track probing is instant.** Reading the track list only parses the
+  Matroska `Info` and `Tracks` elements, so a 40 GB remux lists its tracks as
+  fast as a small file.
+- **Extracted tracks are cached** under `~/Library/Caches`, so reopening a
+  file skips the extraction pass entirely.
+- **Progress is per cue**, not per stage: "312 of 1,204 cues" rather than a
+  three-step guess.
+- The app is named **macSubtitleOCR** throughout; `macSubtitleOCR-gui`
+  remains the repository and executable name.
+
+### Fixed
+
+Five decoding bugs, found while porting the engine and fixed here. Each
+produced wrong output rather than an error, so they were invisible before:
+
+- **Subtitles cut short by fades.** A cue ended at the next segment of any
+  kind, so a palette-only update — how fade-outs are encoded — truncated it.
+  A cue now ends only when the screen is cleared or a new image is drawn.
+- **Multi-part captions losing everything but the last piece.** Display sets
+  that define several objects (a line of dialogue plus a positioned label, for
+  instance) kept only the final object. All objects are now composited at
+  their real positions.
+- **VobSub subpictures under about 2 KB decoding incorrectly**, because the
+  MPEG packet length was written as a fixed size rather than the actual
+  payload length.
+- **VobSub cue timing drift**, from adding raw 1/1024-second control delays to
+  a value measured in seconds.
+- **Every cue capped at five seconds**, even when the stream carried a longer
+  end time. The decoded end is now kept, clamped only so cues cannot overlap;
+  the five-second rule applies only when the end is genuinely unknown.
+
+### Notes
+
+- Upgrading is safe: the app's settings and output naming are unchanged, and
+  no files from earlier versions need migrating.
+- Version 0.2 users on macOS 14 should stay on
+  [v0.2.0](https://github.com/jeffalldridge/macSubtitleOCR-gui/releases/tag/v0.2.0).
+
 ## [0.2.0] — 2026-08-07
 
 A user-interface release: the app now follows the macOS Human Interface

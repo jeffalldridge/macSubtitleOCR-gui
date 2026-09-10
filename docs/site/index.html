@@ -2,28 +2,28 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>macSubtitleOCR-gui — Convert Blu-ray PGS &amp; VobSub subtitles to SRT on macOS</title>
+<title>macSubtitleOCR — Convert Blu-ray PGS &amp; VobSub subtitles to SRT on macOS</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="A free, MIT-licensed macOS app that converts PGS and VobSub bitmap subtitles (from MKV, SUP, SUB/IDX) into clean SRT text using Apple's Vision OCR. Drop a Blu-ray rip, pick the tracks you want, get accurate .srt files. Signed and notarized. macOS 14+, Apple Silicon.">
+<meta name="description" content="A free, MIT-licensed macOS app that converts PGS and VobSub bitmap subtitles (from MKV, SUP, SUB/IDX) into clean SRT text using Apple's Vision OCR — then lets you review every cue against its original bitmap. No Homebrew, no MKVToolNix. Signed, notarized, universal. macOS 15+.">
 <meta name="theme-color" content="#0c0f14">
 <meta name="color-scheme" content="dark light">
 <meta name="author" content="Jeff Alldridge / Tent Studios, LLC">
-<meta name="keywords" content="pgs to srt, vobsub to srt, sup to srt mac, convert blu-ray subtitles to srt, bitmap subtitle ocr mac, extract subtitles from mkv mac, subtitle ocr macos, subtitle edit alternative mac, macSubtitleOCR gui, apple vision subtitle ocr, mkv subtitle to srt, idx sub to srt">
+<meta name="keywords" content="pgs to srt, vobsub to srt, sup to srt mac, convert blu-ray subtitles to srt, bitmap subtitle ocr mac, extract subtitles from mkv mac, subtitle ocr macos, subtitle edit alternative mac, macSubtitleOCR, apple vision subtitle ocr, mkv subtitle to srt, idx sub to srt, subtitle ocr without mkvtoolnix">
 
 <!-- Open Graph / Twitter card -->
-<meta property="og:title" content="macSubtitleOCR-gui — Convert Blu-ray PGS &amp; VobSub subtitles to SRT on macOS">
-<meta property="og:description" content="Drop a Blu-ray rip, get clean .srt files. PGS / VobSub bitmap subtitle OCR powered by Apple's Vision framework. Free, MIT-licensed, signed and notarized for macOS.">
+<meta property="og:title" content="macSubtitleOCR — Convert Blu-ray PGS &amp; VobSub subtitles to SRT on macOS">
+<meta property="og:description" content="Drop a Blu-ray rip, get clean .srt files. PGS / VobSub bitmap subtitle OCR powered by Apple's Vision framework, with a review pass against the original images. Free, MIT-licensed, signed and notarized.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://jeffalldridge.github.io/macSubtitleOCR-gui/">
 <meta property="og:image" content="https://jeffalldridge.github.io/macSubtitleOCR-gui/og-image.png">
 <meta property="og:image:width" content="1280">
 <meta property="og:image:height" content="640">
-<meta property="og:image:alt" content="macSubtitleOCR-gui — Drop a Blu-ray rip, get clean .srt files.">
-<meta property="og:site_name" content="macSubtitleOCR-gui">
+<meta property="og:image:alt" content="macSubtitleOCR — Drop a Blu-ray rip, get clean .srt files.">
+<meta property="og:site_name" content="macSubtitleOCR">
 <meta property="og:locale" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="macSubtitleOCR-gui — Blu-ray PGS/VobSub subtitles to SRT on macOS">
-<meta name="twitter:description" content="Drop a Blu-ray rip, get clean .srt files. Bitmap subtitle OCR powered by Apple's Vision framework. Free and MIT-licensed.">
+<meta name="twitter:title" content="macSubtitleOCR — Blu-ray PGS/VobSub subtitles to SRT on macOS">
+<meta name="twitter:description" content="Drop a Blu-ray rip, get clean .srt files. Bitmap subtitle OCR powered by Apple's Vision framework, with a review pass. Free and MIT-licensed.">
 <meta name="twitter:image" content="https://jeffalldridge.github.io/macSubtitleOCR-gui/og-image.png">
 
 <link rel="canonical" href="https://jeffalldridge.github.io/macSubtitleOCR-gui/">
@@ -47,7 +47,7 @@
             "@type": "WebSite",
             "@id": "https://jeffalldridge.github.io/macSubtitleOCR-gui/#website",
             "url": "https://jeffalldridge.github.io/macSubtitleOCR-gui/",
-            "name": "macSubtitleOCR-gui",
+            "name": "macSubtitleOCR",
             "description": "A free macOS app that converts PGS and VobSub bitmap subtitles to SRT text using Apple's Vision OCR.",
             "inLanguage": "en",
             "publisher": {
@@ -59,11 +59,11 @@
         {
             "@type": "SoftwareApplication",
             "@id": "https://jeffalldridge.github.io/macSubtitleOCR-gui/#software",
-            "name": "macSubtitleOCR-gui",
+            "name": "macSubtitleOCR",
             "applicationCategory": "MultimediaApplication",
             "applicationSubCategory": "Subtitle OCR",
-            "operatingSystem": "macOS 14.0 or later, Apple Silicon",
-            "softwareVersion": "0.2.0",
+            "operatingSystem": "macOS 15.0 or later, universal (Apple silicon and Intel)",
+            "softwareVersion": "1.0.0",
             "downloadUrl": "https://github.com/jeffalldridge/macSubtitleOCR-gui/releases/latest",
             "url": "https://jeffalldridge.github.io/macSubtitleOCR-gui/",
             "license": "https://opensource.org/licenses/MIT",
@@ -79,11 +79,13 @@
             },
             "featureList": [
                 "PGS (Blu-ray) and VobSub (DVD) bitmap subtitle OCR",
-                "Reads MKV, MKS, SUP, and SUB/IDX files",
+                "Reads MKV, MKS, SUP, and SUB/IDX files with no external tools",
                 "Apple Vision framework OCR — higher accuracy than Tesseract",
-                "Multi-track selection with filter-by-language",
+                "Review every cue against the original bitmap and fix it inline",
+                "Batch conversion — drop a folder to queue a whole season",
+                "Multi-track selection with language, name, and forced flags",
                 "Clean SRT output written next to the source file",
-                "Signed with Developer ID and notarized by Apple",
+                "Signed with Developer ID, notarized by Apple, universal binary",
                 "MIT-licensed, open source"
             ],
             "author": {
@@ -107,7 +109,7 @@
                     "name": "How do I convert PGS subtitles to SRT on a Mac?",
                     "acceptedAnswer": {
                         "@type": "Answer",
-                        "text": "Drop an MKV or SUP file onto macSubtitleOCR-gui, select the PGS subtitle track you want, and click Run OCR. The app uses Apple's Vision framework to recognize the bitmap subtitles and writes a clean SRT file next to your source."
+                        "text": "Drop an MKV or SUP file onto macSubtitleOCR, tick the PGS subtitle track you want, and press Recognize. The app uses Apple's Vision framework to recognize the bitmap subtitles, shows you every cue next to the image it read, and writes a clean SRT file next to your source. Nothing else needs to be installed."
                     }
                 },
                 {
@@ -115,7 +117,7 @@
                     "name": "Does it work with VobSub (SUB/IDX) subtitles?",
                     "acceptedAnswer": {
                         "@type": "Answer",
-                        "text": "Yes. macSubtitleOCR-gui reads VobSub tracks from MKV files as well as standalone .sub/.idx pairs, and OCRs them to SRT the same way it handles PGS."
+                        "text": "Yes. macSubtitleOCR reads VobSub tracks from MKV files as well as standalone .sub/.idx pairs, and recognizes them to SRT the same way it handles PGS."
                     }
                 },
                 {
@@ -123,7 +125,7 @@
                     "name": "Is it a free alternative to Subtitle Edit on macOS?",
                     "acceptedAnswer": {
                         "@type": "Answer",
-                        "text": "It is free and MIT-licensed. Subtitle Edit is a far broader editor; macSubtitleOCR-gui is purpose-built for one job — turning PGS and VobSub bitmap subtitles into clean SRT on macOS with native Apple Vision OCR."
+                        "text": "It is free and MIT-licensed. Subtitle Edit is a far broader editor; macSubtitleOCR is purpose-built for one job — turning PGS and VobSub bitmap subtitles into clean SRT on macOS with native Apple Vision OCR and a review pass."
                     }
                 },
                 {
@@ -148,7 +150,7 @@
     <div class="container">
         <a class="topnav-brand" href="./">
             <img src="favicon-192.png" alt="" width="24" height="24">
-            <span class="brand-text">macSubtitleOCR-gui</span>
+            <span class="brand-text">macSubtitleOCR</span>
         </a>
         <ul class="topnav-links">
             <li><a href="#why">Why</a></li>
@@ -167,17 +169,17 @@
      ============================================================ -->
 <header class="hero">
     <div class="container">
-        <img class="hero-icon" src="favicon-512.png" alt="macSubtitleOCR-gui app icon" width="88" height="88">
-        <h1 class="logotype">macSubtitleOCR-gui</h1>
+        <img class="hero-icon" src="favicon-512.png" alt="macSubtitleOCR app icon" width="88" height="88">
+        <h1 class="logotype">macSubtitleOCR</h1>
         <p class="tagline">Drop a Blu-ray rip, get clean <code>.srt</code> files.</p>
-        <p class="subtagline">A native macOS app that turns <strong>PGS</strong> and <strong>VobSub</strong> bitmap subtitles — from MKV, SUP, and SUB/IDX files — into accurate SubRip text using Apple's Vision OCR. Pick exactly the tracks you want; the rest is one click.</p>
+        <p class="subtagline">A native macOS app that turns <strong>PGS</strong> and <strong>VobSub</strong> bitmap subtitles — from MKV, SUP, and SUB/IDX files — into accurate SubRip text using Apple's Vision OCR. Pick the tracks you want, then check every cue against the image it came from. Nothing else to install.</p>
         <div class="cta">
             <a class="button primary" href="https://github.com/jeffalldridge/macSubtitleOCR-gui/releases/latest">⬇ Download the .dmg</a>
             <a class="button" href="https://github.com/jeffalldridge/macSubtitleOCR-gui">View on GitHub →</a>
         </div>
-        <p class="version">v0.2.0 · signed &amp; notarized · MIT licensed · macOS 14+, Apple Silicon</p>
+        <p class="version">v1.0.0 · signed &amp; notarized · universal · MIT licensed · macOS 15+</p>
         <div class="hero-shot">
-            <img src="main-window.png" alt="macSubtitleOCR-gui drop window — drag a video or subtitle file to begin" loading="lazy">
+            <img src="main-window.png" alt="macSubtitleOCR reviewing recognized cues beside their original subtitle bitmaps" loading="lazy">
         </div>
     </div>
 </header>
@@ -188,17 +190,19 @@
 <section class="section alt" id="why">
     <div class="container">
         <h2>Why this exists</h2>
-        <p class="lede"><a href="https://github.com/ecdye/macSubtitleOCR">macSubtitleOCR</a> is the best macOS-native PGS-to-SRT engine there is — it uses Apple's Vision framework, so OCR quality beats Tesseract. But the CLI runs OCR on <em>every</em> subtitle track in a file, which is rarely what you want when you're cutting a single language for a release.</p>
-        <p>This GUI wraps that engine and adds the part you actually need: <strong>see every track, pick the ones you want, OCR only those.</strong></p>
+        <p class="lede">Bitmap subtitles are pictures of words. Turning them into text on a Mac has meant either a command-line tool that runs OCR over <em>every</em> track in a file, or a cross-platform editor that doesn't feel like a Mac app — and in both cases, no easy way to see whether the result is right.</p>
+        <p>macSubtitleOCR does the whole job in one place: <strong>see every track, pick the ones you want, recognize only those, and check the result against the original images before you mux.</strong> It reads Matroska itself, so there is nothing to install alongside it.</p>
         <table class="compare">
             <thead>
-                <tr><th></th><th>macSubtitleOCR CLI</th><th>Subtitle Edit</th><th>macSubtitleOCR-gui</th></tr>
+                <tr><th></th><th>macSubtitleOCR CLI</th><th>Subtitle Edit</th><th>macSubtitleOCR</th></tr>
             </thead>
             <tbody>
                 <tr><th>Native macOS app</th><td>—</td><td>via mono</td><td>✓</td></tr>
                 <tr><th>Apple Vision OCR</th><td>✓</td><td>—</td><td>✓</td></tr>
                 <tr><th>Pick specific tracks</th><td>—</td><td>✓</td><td>✓</td></tr>
-                <tr><th>Drag-and-drop</th><td>—</td><td>partial</td><td>✓</td></tr>
+                <tr><th>Review cues against the bitmap</th><td>—</td><td>✓</td><td>✓</td></tr>
+                <tr><th>Batch a whole folder</th><td>—</td><td>✓</td><td>✓</td></tr>
+                <tr><th>No other tools to install</th><td>—</td><td>—</td><td>✓</td></tr>
                 <tr><th>Signed &amp; notarized</th><td>n/a</td><td>—</td><td>✓</td></tr>
                 <tr><th>Free</th><td>✓</td><td>✓</td><td>✓</td></tr>
             </tbody>
@@ -219,7 +223,7 @@
             </div>
             <div class="feature">
                 <h3>Pick exactly what you want</h3>
-                <p>Every track is listed with its language and name — English (SDH), Italian (Commentary), and so on. Multi-select, with filter-by-language for big remuxes.</p>
+                <p>Every track is listed with its language, name, and flags — English (SDH), Italian (Commentary), forced signs-and-songs. Tick as many as you like; matching languages are ticked for you.</p>
             </div>
             <div class="feature">
                 <h3>Apple Vision accuracy</h3>
@@ -230,12 +234,20 @@
                 <p>Each track lands as <code>MyFilm.eng.srt</code> (or <code>MyFilm.eng.english-sdh.srt</code>) right next to your source — ready to mux.</p>
             </div>
             <div class="feature">
-                <h3>Preview before you mux</h3>
-                <p>The Done screen shows the first cues of each output so you can sanity-check OCR quality before committing.</p>
+                <h3>See what it read</h3>
+                <p>Every cue is shown beside the exact bitmap the recognizer saw. Cues it was unsure about are flagged. Fix any of them inline — the <code>.srt</code> updates as you type.</p>
             </div>
             <div class="feature">
-                <h3>Signed, notarized, MIT</h3>
-                <p>The published <code>.dmg</code> is Developer-ID signed and notarized by Apple — no Gatekeeper warnings. Fully open source.</p>
+                <h3>Nothing else to install</h3>
+                <p>Matroska parsing, subtitle decoding, and recognition all happen inside the app. No Homebrew, no MKVToolNix, no helper binaries.</p>
+            </div>
+            <div class="feature">
+                <h3>Batch a season</h3>
+                <p>Drop a folder and every supported file joins the queue. Watch per-cue progress; cancel any time without losing what's finished.</p>
+            </div>
+            <div class="feature">
+                <h3>Signed, notarized, universal</h3>
+                <p>The published <code>.dmg</code> is Developer-ID signed, notarized by Apple, and runs natively on Apple silicon and Intel. Fully open source, MIT licensed.</p>
             </div>
         </div>
     </div>
@@ -247,15 +259,15 @@
 <section class="section alt" id="how">
     <div class="container">
         <h2>How it works</h2>
-        <p class="lede">Four phases — Drop, Tracks, Run, Done. No configuration.</p>
+        <p class="lede">Add, pick, recognize, review. No configuration required.</p>
         <ol class="steps">
-            <li><strong>Drop a file.</strong> Drag a <code>.mkv</code> / <code>.sup</code> / <code>.sub</code> / <code>.idx</code> onto the window (or ⌘O).</li>
-            <li><strong>Pick tracks.</strong> The app probes for PGS / VobSub tracks and shows them with codec, language, and name. SDH / Commentary / Sing-Along variants are clearly labeled.</li>
-            <li><strong>Run OCR.</strong> Tick the tracks you want, tweak language or invert options if needed, hit Run. Live progress, cancellable.</li>
-            <li><strong>Get SRTs.</strong> Each track is written as its own <code>.srt</code> next to your source, with a preview of the first cues and one-click reveal in Finder.</li>
+            <li><strong>Add files.</strong> Drag them onto the window, press ⌘O, use the Finder's Open With menu, or select files and choose Services ▸ Recognize Subtitles. Drop a folder to queue a whole season.</li>
+            <li><strong>Pick tracks.</strong> Each file expands to its PGS and VobSub tracks with codec, language, name, and default or forced flags. Tracks in your language are ticked automatically.</li>
+            <li><strong>Recognize.</strong> Press ⌘R. Progress counts real cues — "312 of 1,204" — and ⌘. cancels without losing finished work.</li>
+            <li><strong>Review.</strong> Every cue appears beside its original bitmap, with low-confidence ones flagged. Correct anything that's wrong; the file is rewritten as you go.</li>
         </ol>
         <div class="shot">
-            <img src="track-selection.png" alt="Track picker showing multiple subtitle tracks with language tags and multi-select" loading="lazy">
+            <img src="track-selection.png" alt="Sidebar showing queued files expanded into their subtitle tracks with language and flags" loading="lazy">
         </div>
     </div>
 </section>
@@ -272,12 +284,11 @@
             <a class="button primary" href="https://github.com/jeffalldridge/macSubtitleOCR-gui/releases/latest">⬇ Get the latest release</a>
         </div>
         <p style="margin-top:28px"><strong>Option 2 — build from source:</strong></p>
-        <pre class="code"><code><span class="dim">$</span> git clone --recurse-submodules https://github.com/jeffalldridge/macSubtitleOCR-gui
+        <pre class="code"><code><span class="dim">$</span> git clone https://github.com/jeffalldridge/macSubtitleOCR-gui
 <span class="dim">$</span> cd macSubtitleOCR-gui
-<span class="dim">$</span> brew install mkvtoolnix
 <span class="dim">$</span> make app
 <span class="dim">$</span> open build/macSubtitleOCR-gui.app</code></pre>
-        <p><strong>Requirements:</strong> macOS 14 (Sonoma) or newer, Apple Silicon, and <a href="https://mkvtoolnix.download">MKVToolNix</a> (<code>brew install mkvtoolnix</code>) — used at runtime to read and extract MKV tracks. The app shows a one-tap install card if it's missing.</p>
+        <p><strong>Requirements:</strong> macOS 15 (Sequoia) or newer. Nothing else — the app has no runtime dependencies. Building from source needs Xcode 26.</p>
     </div>
 </section>
 
@@ -290,7 +301,7 @@
         <div class="faq">
             <details>
                 <summary>How do I convert PGS subtitles to SRT on a Mac?</summary>
-                <div class="answer"><p>Drop an MKV or SUP file onto macSubtitleOCR-gui, pick the PGS track you want, and click Run OCR. Apple's Vision framework recognizes the bitmap subtitles and writes a clean SRT next to your source file — ready to mux into an MP4 with <a href="https://subler.org">Subler</a> or your tool of choice.</p></div>
+                <div class="answer"><p>Drop an MKV or SUP file onto macSubtitleOCR, tick the PGS track you want, and press Recognize. Apple's Vision framework reads the bitmap subtitles and writes a clean SRT next to your source file — ready to mux into an MP4 with <a href="https://subler.org">Subler</a> or your tool of choice. You can check every cue against its original image first.</p></div>
             </details>
             <details>
                 <summary>Does it handle VobSub (.sub / .idx) subtitles?</summary>
@@ -298,7 +309,7 @@
             </details>
             <details>
                 <summary>Is this a free Subtitle Edit alternative for macOS?</summary>
-                <div class="answer"><p>It's free and MIT-licensed. <a href="https://github.com/SubtitleEdit/subtitleedit">Subtitle Edit</a> is a far broader editor — conversion, timing, the works. macSubtitleOCR-gui is intentionally narrower: PGS / VobSub bitmap subtitles in, clean SRT out, with native Apple Vision OCR. If you mostly need accurate bitmap-to-text on a Mac, this is purpose-built for that.</p></div>
+                <div class="answer"><p>It's free and MIT-licensed. <a href="https://github.com/SubtitleEdit/subtitleedit">Subtitle Edit</a> is a far broader editor — conversion, timing, the works. macSubtitleOCR is intentionally narrower: PGS / VobSub bitmap subtitles in, clean SRT out, with native Apple Vision OCR and a review pass. If you mostly need accurate bitmap-to-text on a Mac, this is purpose-built for that.</p></div>
             </details>
             <details>
                 <summary>Why Apple Vision instead of Tesseract?</summary>
@@ -306,15 +317,23 @@
             </details>
             <details>
                 <summary>Does it work with .m2ts Blu-ray streams?</summary>
-                <div class="answer"><p>Not directly. Demux to <code>.mkv</code> first with <code>mkvmerge</code>, or rip the disc with <a href="https://www.makemkv.com/">MakeMKV</a> — both produce MKVs with the original PGS streams intact, which the app reads natively.</p></div>
+                <div class="answer"><p>Not directly. Demux to <code>.mkv</code> first, or rip the disc with <a href="https://www.makemkv.com/">MakeMKV</a> — both produce MKVs with the original PGS streams intact, which the app reads natively.</p></div>
             </details>
             <details>
                 <summary>Can I run it on an Intel Mac?</summary>
-                <div class="answer"><p>Build from source — <code>make app</code> works on Intel. The published <code>.dmg</code> is arm64-only for v0.1; a universal build is on the backlog.</p></div>
+                <div class="answer"><p>Yes. The published <code>.dmg</code> is a universal binary and runs natively on both Apple silicon and Intel Macs, on macOS 15 or newer.</p></div>
             </details>
             <details>
-                <summary>Why does it need MKVToolNix?</summary>
-                <div class="answer"><p><code>mkvmerge -J</code> lists subtitle tracks in a parseable form, and <code>mkvextract</code> pulls just the chosen track so the app doesn't re-OCR the whole file. MKVToolNix isn't bundled because it's GPL-2.0+ and this app ships MIT — it's a 30-second one-time <code>brew install mkvtoolnix</code>.</p></div>
+                <summary>Do I need MKVToolNix or Homebrew?</summary>
+                <div class="answer"><p>No. Versions up to 0.2 called <code>mkvmerge</code> and <code>mkvextract</code> at runtime. Version 1.0 reads Matroska itself, so the app is entirely self-contained — download it and it works.</p></div>
+            </details>
+            <details>
+                <summary>Is the recognized text always correct?</summary>
+                <div class="answer"><p>Not always, which is why the review screen exists. Every cue is shown beside the image it came from, and the ones Vision was least sure about are flagged so you know where to look. Italics, very small type, and decorative faces in musicals or animation are the usual trouble spots. On a Mac with Apple Intelligence you can also ask the on-device model to propose fixes for flagged cues — shown as before/after suggestions you accept or reject.</p></div>
+            </details>
+            <details>
+                <summary>Does anything leave my Mac?</summary>
+                <div class="answer"><p>Only the once-a-day check for a newer release, which asks GitHub for the latest version number and nothing else. You can turn it off in Settings. Recognition, clean-up, and translation all run locally on your Mac.</p></div>
             </details>
         </div>
     </div>
@@ -324,7 +343,7 @@
 
 <footer class="footer">
     <div class="container">
-        <p>By <a href="https://tentstudios.com">Tent Studios, LLC</a>. MIT licensed. OCR engine: <a href="https://github.com/ecdye/macSubtitleOCR">macSubtitleOCR</a> by Ethan Dye.</p>
+        <p>By <a href="https://tentstudios.com">Tent Studios, LLC</a>. MIT licensed. Recognition engine derived from <a href="https://github.com/ecdye/macSubtitleOCR">macSubtitleOCR</a> by Ethan Dye.</p>
         <p><a href="https://github.com/jeffalldridge/macSubtitleOCR-gui">Source on GitHub</a> · <a href="https://github.com/jeffalldridge/macSubtitleOCR-gui/releases">Releases</a> · <a href="https://github.com/jeffalldridge/macSubtitleOCR-gui/issues">Issues</a></p>
     </div>
 </footer>
