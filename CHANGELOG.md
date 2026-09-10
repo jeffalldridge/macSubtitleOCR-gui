@@ -88,6 +88,20 @@ never be able to hide the interface.
 centre during launch raises an exception outside a real `.app`, which killed
 `make run`.
 
+**Cancel now works while a track is being read.** Cancelling during the
+extraction phase did nothing at all: the work ran on a task that could not
+see the cancellation, so a large MKV kept going to the end regardless.
+
+**Reverting an edit now reaches the file.** "Revert to Recognized Text" and
+"Revert All Edits" both restored the text on screen and left the `.srt`
+holding the edits, with nothing on screen saying the two had diverged.
+
+**A cue you were still typing is no longer lost on quit**, and two tracks in
+one run can no longer write to the same filename and destroy each other.
+Files dropped on the window mid-run join the run instead of being silently
+ignored, redo no longer breaks the undo chain, and the same track can no
+longer be read out of a container twice at once.
+
 **Malicious subtitle files can no longer crash the app.** An adversarial
 review of the new parsers found six ways a crafted file could take it down: a
 120 KB Matroska file that overflowed the stack through nested elements, three
