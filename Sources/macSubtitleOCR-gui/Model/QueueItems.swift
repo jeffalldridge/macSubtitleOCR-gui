@@ -74,6 +74,9 @@ final class QueueTrack: Identifiable {
     var status: TrackStatus = .idle
     var loadState: StreamLoadState = .notLoaded
     var stream: (any SubtitleStream)?
+    /// The extraction in flight, so a preview load and a run share one pass
+    /// over the container instead of racing.
+    @ObservationIgnored var loadTask: Task<any SubtitleStream, Error>?
     var cues: [ReviewCue] = []
     var outputURL: URL?
     var issues: [String] = []

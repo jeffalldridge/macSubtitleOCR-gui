@@ -93,6 +93,10 @@ final class ConversionQueue {
 
     /// Add files. Unsupported and duplicate URLs are ignored; VobSub pairs
     /// are added once.
+    /// Files added while a run is in progress. The run picks them up when it
+    /// reaches them, so a file dropped mid-run is not silently ignored.
+    @ObservationIgnored private var lateArrivals: [QueueFile] = []
+
     func add(urls: [URL]) {
         var seen = Set(files.flatMap { $0.source.urls.map(\.standardizedFileURL) })
         for url in urls {
@@ -109,6 +113,7 @@ final class ConversionQueue {
 
             let file = QueueFile(source: source)
             files.append(file)
+            if isRunning { lateArrivals.append(file) }
             RecentFiles.note(url)
             probe(file)
         }
@@ -212,18 +217,25 @@ final class ConversionQueue {
             track.status = .queued
             track.cues = []
             track.outputURL = nil
+            track.issues = []
         }
         runState = .running
         overallProgress = 0
         activity = "Starting…"
 
         let options = runOptions
+        lateArrivals.removeAll()
         runTask = Task { [weak self] in
             guard let self else { return }
             var summary = RunSummary(saved: 0, failed: 0, cancelled: 0, reviewCount: 0, outputs: [])
-            let total = Double(tracks.count)
+            var claimedNames: Set<String> = []
+            var pending = tracks
+            var position = 0
 
-            for (position, track) in tracks.enumerated() {
+            while position < pending.count {
+                let track = pending[position]
+                let total = Double(pending.count)
+                defer { position += 1 }
                 guard let file = file(for: track) else { continue }
                 if Task.isCancelled {
                     track.status = .cancelled
@@ -240,7 +252,9 @@ final class ConversionQueue {
                     }
                 }
                 do {
-                    let url = try await ConversionRunner.run(track: track, in: file, options: options, cache: cache)
+                    let url = try await ConversionRunner.run(track: track, in: file, options: options,
+                                                            cache: cache, claimedNames: claimedNames)
+                    claimedNames.insert(url.lastPathComponent)
                     summary.saved += 1
                     summary.reviewCount += track.reviewCount
                     summary.outputs.append(url)
@@ -257,6 +271,17 @@ final class ConversionQueue {
                     Self.logger.error("Track \(track.info.id) failed: \(error.localizedDescription)")
                 }
                 progressTask.cancel()
+
+                // A file dropped on the window mid-run has finished probing by
+                // now; fold its included tracks into this run.
+                if !lateArrivals.isEmpty {
+                    let arrived = lateArrivals.filter { $0.state != .probing }
+                    lateArrivals.removeAll { file in arrived.contains { $0.id == file.id } }
+                    for track in arrived.flatMap(\.includedTracks) where !pending.contains(where: { $0 === track }) {
+                        track.status = .queued
+                        pending.append(track)
+                    }
+                }
             }
 
             overallProgress = 1

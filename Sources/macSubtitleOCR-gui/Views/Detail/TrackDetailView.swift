@@ -173,17 +173,24 @@ struct TrackDetailView: View {
 
     private func cueEdited(_ cue: ReviewCue, previous: String) {
         guard cue.text != previous else { return }
-        undoManager?.registerUndo(withTarget: cue) { target in
-            let current = target.text
+        register(cue, from: previous, to: cue.text)
+        scheduleSave()
+    }
+
+    /// Register an undo that itself registers a redo, and so on. Without the
+    /// recursion the chain stops after one round trip: AppKit routes a
+    /// registration made during a redo back onto the undo stack, so each step
+    /// has to register the next.
+    private func register(_ cue: ReviewCue, from previous: String, to current: String) {
+        guard let undoManager else { return }
+        undoManager.registerUndo(withTarget: cue) { target in
             target.text = previous
-            Task { @MainActor in scheduleSave() }
-            undoManager?.registerUndo(withTarget: target) { redo in
-                redo.text = current
-                Task { @MainActor in scheduleSave() }
+            Task { @MainActor in
+                register(target, from: current, to: previous)
+                scheduleSave()
             }
         }
-        undoManager?.setActionName("Edit Cue")
-        scheduleSave()
+        undoManager.setActionName("Edit Cue")
     }
 
     private func scheduleSave() {
@@ -205,6 +212,7 @@ struct CueRowModel: Identifiable {
 
 /// Reveal, translate, and clean-up actions for a finished track.
 struct TrackActionsMenu: View {
+    @Environment(ConversionQueue.self) private var queue
     let track: QueueTrack
     let file: QueueFile
     @State private var showTranslate = false
@@ -220,6 +228,9 @@ struct TrackActionsMenu: View {
             Divider()
             Button("Revert All Edits") {
                 for cue in track.cues { cue.revert() }
+                // The table shows the recognized text again; the file has to
+                // agree, or the two diverge with nothing on screen saying so.
+                queue.saveEdits(for: track)
             }
             .disabled(track.editedCount == 0)
         } label: {

@@ -25,25 +25,36 @@ nonisolated enum OutputNaming {
     /// - Parameters:
     ///   - existing: names already in the folder (any case), used to avoid
     ///     collisions when the policy is `.addSuffix`.
+    /// - Parameters:
+    ///   - existing: names already in the folder, so `.addSuffix` can avoid them.
+    ///   - claimed: names this run has already handed out, which no policy may
+    ///     overwrite.
     static func url(for track: TrackInfo,
                     sourceURL: URL,
                     fallbackLanguage: String?,
                     outputFolder: URL?,
                     conflictPolicy: AppSettings.ConflictPolicy,
-                    existing: Set<String>) -> URL {
+                    existing: Set<String>,
+                    claimed: Set<String> = []) -> URL {
         let folder = outputFolder ?? sourceURL.deletingLastPathComponent()
         let base = sourceURL.deletingPathExtension().lastPathComponent
         let code = languageCode(for: track, fallback: fallbackLanguage)
         let taken = Set(existing.map { $0.lowercased() })
+        let claimed = Set(claimed.map { $0.lowercased() })
 
+        // "Replace" means replace what was already on disk. It never means
+        // clobber a file this same run just wrote: two English tracks in one
+        // container, one forced and neither named, otherwise land on the same
+        // path and the second destroys the first.
         let primary = filename(base: base, languageCode: code, trackName: track.name)
-        if conflictPolicy == .replace || !taken.contains(primary.lowercased()) {
+        if !claimed.contains(primary.lowercased()),
+           conflictPolicy == .replace || !taken.contains(primary.lowercased()) {
             return folder.appendingPathComponent(primary)
         }
         var suffix = 1
         while true {
             let candidate = filename(base: base, languageCode: code, trackName: track.name, suffix: suffix)
-            if !taken.contains(candidate.lowercased()) {
+            if !taken.contains(candidate.lowercased()), !claimed.contains(candidate.lowercased()) {
                 return folder.appendingPathComponent(candidate)
             }
             suffix += 1

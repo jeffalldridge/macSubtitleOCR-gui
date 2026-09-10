@@ -112,8 +112,11 @@ struct CueTextCell: View {
                 }
                 if cue.isEdited {
                     Button("Revert to Recognized Text") {
+                        let previous = cue.text
                         cue.revert()
                         draft = cue.text
+                        // Same path as a normal edit: undo, and a write to disk.
+                        onEdit(cue, previous)
                     }
                 }
             }

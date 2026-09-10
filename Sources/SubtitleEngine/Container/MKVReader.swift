@@ -84,7 +84,10 @@ public struct MKVReader: Sendable {
                 }
                 // Neither element's position is fixed: Tracks can follow the
                 // first Cluster, and Info can follow Tracks. Keep walking
-                // until both are in hand.
+                // until both are in hand — but stop at the first cluster once
+                // Tracks is found, so probing a multi-gigabyte remux with no
+                // Info element does not turn into a full read of the file.
+                if child.id == MatroskaID.cluster, tracksElement != nil { return false }
                 return tracksElement == nil || !sawInfo
             }
 

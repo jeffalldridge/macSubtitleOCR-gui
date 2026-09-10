@@ -60,7 +60,7 @@ extension MKVReader {
                 let units = Int64(clamping: clusterTimestamp).addingReportingOverflow(Int64(block.relativeTimestamp))
                 let ticks = units.overflow ? Int64.max : units.partialValue
                 let nanoseconds = UInt64(max(ticks, 0)).multipliedReportingOverflow(by: scale)
-                let pts90k = nanoseconds.overflow ? UInt64.max / 100_000 : nanoseconds.partialValue / 100_000 * 9
+                let pts90k = Self.ticks90kHz(nanoseconds: nanoseconds)
                 for frame in block.frames where !frame.isEmpty {
                     let slice = bytes[frame]
                     switch track.format {
@@ -114,6 +114,19 @@ extension MKVReader {
                 return .vobsub(sub: output, idx: Self.synthesizeIDX(for: track, timestampLines: idxLines))
             }
         }
+    }
+
+    /// Convert nanoseconds to 90 kHz ticks: `ns * 9 / 100_000`.
+    ///
+    /// Multiplies before dividing, or the division quantizes every timestamp
+    /// to nine-tick steps for any timestamp scale that is not a multiple of
+    /// 100 000. Saturates instead of trapping, because the inputs come out of
+    /// the file.
+    static func ticks90kHz(nanoseconds: (partialValue: UInt64, overflow: Bool)) -> UInt64 {
+        guard !nanoseconds.overflow else { return UInt64.max / 100_000 }
+        let scaled = nanoseconds.partialValue.multipliedReportingOverflow(by: 9)
+        guard !scaled.overflow else { return UInt64.max / 100_000 }
+        return scaled.partialValue / 100_000
     }
 
     /// Build the `.idx` text for a VobSub track: the container's codec

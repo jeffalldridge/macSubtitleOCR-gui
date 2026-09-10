@@ -45,8 +45,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        // An edit made in the last half-second is still sitting behind a
-        // debounce timer. Write it out before anything else.
+        // A cue the user is still typing into has not reached the model yet,
+        // and an edit made in the last half-second is still behind a debounce
+        // timer. Commit the field, then write everything out.
+        for window in NSApp.windows { window.makeFirstResponder(nil) }
         Self.queue?.flushPendingEdits()
 
         guard let queue = Self.queue, queue.isRunning else { return .terminateNow }

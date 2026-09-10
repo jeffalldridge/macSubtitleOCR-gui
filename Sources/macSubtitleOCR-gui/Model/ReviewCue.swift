@@ -58,5 +58,6 @@ final class ReviewCue: Identifiable {
 
     func revert() {
         text = originalText
+        isMarkedReviewed = false
     }
 }

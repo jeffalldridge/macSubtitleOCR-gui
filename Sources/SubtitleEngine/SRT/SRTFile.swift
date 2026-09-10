@@ -30,8 +30,11 @@ public enum SRTFile {
             return nil
         }
         let parts = mainAndMillis[0].split(separator: ":").compactMap { Int($0) }
-        // Hours are bounded so a crafted file cannot overflow the arithmetic.
-        guard parts.count == 3, parts.allSatisfy({ $0 >= 0 }), parts[0] <= 99_999 else { return nil }
+        // Every component is bounded, so a crafted file can neither overflow
+        // the arithmetic nor smuggle in an absurd time through minutes or
+        // seconds instead of hours.
+        guard parts.count == 3, parts[0] >= 0, parts[0] <= 99_999,
+              (0...59).contains(parts[1]), (0...59).contains(parts[2]) else { return nil }
         return TimeInterval(parts[0]) * 3600 + TimeInterval(parts[1]) * 60 + TimeInterval(parts[2])
             + TimeInterval(millis) / 1000
     }

@@ -144,34 +144,29 @@ struct EBMLReader {
     /// construct in the file, so recursion here is a stack overflow waiting
     /// to be handed to the app.
     func resolvingUnknownSize(_ element: Element) -> Element {
-        // Each entry is an open unknown-size element still looking for its end.
-        var open: [(id: UInt32, dataOffset: Int, terminators: Set<UInt32>)] =
-            [(element.id, element.dataOffset, Self.terminators(for: element.id))]
+        // A stack of open unknown-size elements, outermost first. A child that
+        // terminates the innermost one may also terminate its parents, so the
+        // stack unwinds rather than stopping at the first match.
+        var open: [Set<UInt32>] = [Self.terminators(for: element.id)]
         var offset = element.dataOffset
-        var resolvedEnd = element.dataOffset
 
-        while !open.isEmpty {
-            guard offset < bytes.count, let child = self.element(at: offset) else { break }
-            let top = open[open.count - 1]
-
-            if top.terminators.contains(child.id) {
-                // This child belongs to an ancestor: everything still open ends here.
-                resolvedEnd = offset
-                break
+        outer: while offset < bytes.count, let child = self.element(at: offset) {
+            // Close every open element this child cannot belong to.
+            while let innermost = open.last, innermost.contains(child.id) {
+                open.removeLast()
+                if open.isEmpty { break outer }
             }
             if child.isUnknownSize {
                 guard open.count < Self.maxUnknownSizeDepth else { break }
-                open.append((child.id, child.dataOffset, Self.terminators(for: child.id)))
+                open.append(Self.terminators(for: child.id))
                 offset = child.dataOffset
                 continue
             }
             guard child.endOffset > offset else { break }
             offset = child.endOffset
-            resolvedEnd = offset
         }
 
-        return Element(id: element.id, size: nil, dataOffset: element.dataOffset,
-                       endOffset: max(resolvedEnd, offset))
+        return Element(id: element.id, size: nil, dataOffset: element.dataOffset, endOffset: offset)
     }
 
     /// IDs that end an unknown-size element of the given type. A Segment runs

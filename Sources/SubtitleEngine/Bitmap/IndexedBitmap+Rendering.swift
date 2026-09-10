@@ -9,6 +9,11 @@ extension IndexedBitmap {
         case recognition(invert: Bool)
     }
 
+    /// Ceiling on a rendered image, in pixels. Generous next to any real
+    /// subtitle, and small enough that a hostile file cannot make the app
+    /// allocate its way out of memory.
+    public static let maxRenderedPixels = 4096 * 2304
+
     public struct Bounds: Sendable, Equatable {
         public let x: Int
         public let y: Int
@@ -61,7 +66,8 @@ extension IndexedBitmap {
 
         let outWidth = bounds.width + 2 * margin
         let outHeight = bounds.height + 2 * margin
-        guard outWidth > 0, outHeight > 0, outWidth * outHeight <= 16384 * 16384 else { return nil }
+        // Four bytes per pixel here, and again in the CGDataProvider's copy.
+        guard outWidth > 0, outHeight > 0, outWidth * outHeight <= Self.maxRenderedPixels else { return nil }
 
         // Precompute per-index RGBA for the chosen style (premultiplied for display).
         var lookup = [UInt8](repeating: 0, count: 256 * 4)

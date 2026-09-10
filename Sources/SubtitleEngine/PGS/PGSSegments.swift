@@ -153,11 +153,12 @@ struct PGSObject {
     static let lastFragment: UInt8 = 0x40
 
     /// A PGS object cannot be larger than the video frame it is drawn on, and
-    /// Blu-ray tops out at 1920x1080. This allows well past 4K in both
-    /// directions, and still keeps a crafted 92-byte file from asking for a
-    /// four-gigabyte allocation.
+    /// Blu-ray tops out at 1920x1080. This allows 8K in either direction and
+    /// a little over 8K by 4K in area, which no disc reaches, while keeping a
+    /// crafted file from turning a hundred bytes into hundreds of megabytes:
+    /// every pixel here costs one byte indexed and four more once rendered.
     static let maxDimension = 8192
-    static let maxPixels = 8192 * 4320
+    static let maxPixels = 4096 * 2304
 
     let id: UInt16
     private(set) var width = 0

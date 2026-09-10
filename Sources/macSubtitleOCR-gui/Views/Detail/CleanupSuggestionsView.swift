@@ -4,6 +4,7 @@ import SwiftUI
 @available(macOS 26, *)
 struct CleanupSuggestionsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.undoManager) private var undoManager
     @Environment(ConversionQueue.self) private var queue
 
     let track: QueueTrack
@@ -12,7 +13,7 @@ struct CleanupSuggestionsView: View {
     @State private var accepted: Set<Int> = []
     @State private var progress: Double = 0
     @State private var phase: Phase = .working
-    @State private var task: Task<Void, Never>?
+    @State private var task: Task<[CleanupAssistant.Suggestion], Error>?
 
     private enum Phase: Equatable {
         case working
@@ -69,7 +70,7 @@ struct CleanupSuggestionsView: View {
         }
         .padding(20)
         .frame(width: 640, height: 480)
-        .task { run() }
+        .task { await run() }
     }
 
     private var flaggedCount: Int { track.cues.filter(\.needsReview).count }
@@ -94,29 +95,45 @@ struct CleanupSuggestionsView: View {
         }
     }
 
-    private func run() {
+    /// Awaited from `.task`, so SwiftUI cancels it when the sheet closes.
+    private func run() async {
         let flagged = track.cues.filter(\.needsReview)
         let language = track.languageName == "Unknown language" ? nil : track.languageName
-        task = Task {
-            do {
-                let found = try await CleanupAssistant().suggestions(for: flagged, language: language) { value in
-                    progress = value
-                }
-                suggestions = found
-                accepted = Set(found.map(\.id))
-                phase = .ready
-            } catch is CancellationError {
-                // dismissed
-            } catch {
-                phase = .failed(error.localizedDescription)
+        let work = Task {
+            try await CleanupAssistant().suggestions(for: flagged, language: language) { value in
+                progress = value
             }
+        }
+        task = work
+        defer { task = nil }
+        do {
+            let found = try await work.value
+            suggestions = found
+            accepted = Set(found.map(\.id))
+            phase = .ready
+        } catch is CancellationError {
+            // The sheet went away.
+        } catch {
+            phase = .failed(error.localizedDescription)
         }
     }
 
     private func apply() {
         let byIndex = Dictionary(uniqueKeysWithValues: track.cues.map { ($0.index, $0) })
-        for suggestion in suggestions where accepted.contains(suggestion.id) {
+        let applied = suggestions.filter { accepted.contains($0.id) }
+        for suggestion in applied {
             byIndex[suggestion.cueIndex]?.text = suggestion.suggested
+        }
+        // One undo step for the whole batch: accepting forty suggestions and
+        // then wanting them back should not mean forty separate undos.
+        if let undoManager, !applied.isEmpty {
+            let cues = applied.compactMap { byIndex[$0.cueIndex] }
+            let before = applied.map(\.original)
+            undoManager.registerUndo(withTarget: track) { target in
+                for (cue, text) in zip(cues, before) { cue.text = text }
+                Task { @MainActor in queue.saveEdits(for: target) }
+            }
+            undoManager.setActionName("Clean Up Cues")
         }
         queue.saveEdits(for: track)
         dismiss()

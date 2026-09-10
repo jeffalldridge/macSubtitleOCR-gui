@@ -50,8 +50,12 @@ nonisolated struct StreamCache: Sendable {
     }
 
     /// Write an extracted track and return where it went.
+    ///
+    /// Prunes afterwards, so the cache stays bounded within a long session
+    /// rather than only across launches.
     @discardableResult
     func store(_ extracted: ExtractedTrack, key: String) throws -> (primary: URL, idx: URL?) {
+        defer { prune() }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         switch extracted {
         case .pgs(let data):
@@ -87,6 +91,7 @@ nonisolated struct StreamCache: Sendable {
         guard let entries = try? fm.contentsOfDirectory(at: directory,
                                                         includingPropertiesForKeys: [.fileSizeKey, .contentModificationDateKey]) else { return }
         struct Entry { let url: URL; let size: Int64; let modified: Date }
+
         var items: [Entry] = entries.compactMap { url in
             let values = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
             return Entry(url: url, size: Int64(values?.fileSize ?? 0), modified: values?.contentModificationDate ?? .distantPast)
@@ -97,10 +102,24 @@ nonisolated struct StreamCache: Sendable {
         }
         items.removeAll { $0.modified < cutoff }
 
-        var total = items.reduce(0) { $0 + $1.size }
-        for item in items.sorted(by: { $0.modified < $1.modified }) where total > maxBytes {
-            try? fm.removeItem(at: item.url)
-            total -= item.size
+        // Evict by cache key, not by file: a VobSub entry is a .sub and a .idx,
+        // and deleting one leaves the other orphaned and unusable while still
+        // counting toward the total.
+        var byKey: [String: [Entry]] = [:]
+        for item in items {
+            byKey[item.url.deletingPathExtension().lastPathComponent, default: []].append(item)
+        }
+        var groups = byKey.values.map { entries in
+            (size: entries.reduce(0) { $0 + $1.size },
+             modified: entries.map(\.modified).max() ?? .distantPast,
+             urls: entries.map(\.url))
+        }
+        groups.sort { $0.modified < $1.modified }
+
+        var total = groups.reduce(0) { $0 + $1.size }
+        for group in groups where total > maxBytes {
+            for url in group.urls { try? fm.removeItem(at: url) }
+            total -= group.size
         }
     }
 

@@ -66,18 +66,25 @@ struct RecognizeSubtitlesIntent: AppIntent {
     }
 
     /// Headless equivalent of a queue run for one file.
-    static func recognize(url: URL, languages: [String], choice: TrackChoice) async throws -> [URL] {
+    ///
+    /// `nonisolated`, and every synchronous step runs off the main actor:
+    /// probing and extraction are file work, and running them on the main
+    /// actor freezes the window while a shortcut is processing.
+    nonisolated static func recognize(url: URL, languages: [String], choice: TrackChoice) async throws -> [URL] {
         let source = try SubtitleSource.open(url)
-        let info = try source.probe()
+        let info = try await Task.detached(priority: .userInitiated) { try source.probe() }.value
         let tracks = select(from: info.tracks, languages: languages, choice: choice)
         guard !tracks.isEmpty else { return [] }
 
         let options = RecognitionOptions(languages: languages)
         var outputs: [URL] = []
         let folder = source.primaryURL.deletingLastPathComponent()
+        var claimed: Set<String> = []
 
         for track in tracks {
-            let stream = try source.loadStream(for: track, progress: nil)
+            let stream = try await Task.detached(priority: .userInitiated) {
+                try source.loadStream(for: track, progress: nil)
+            }.value
             var recognized: [RecognizedCue] = []
             for try await event in TrackConverter.run(stream: stream, options: options,
                                                       trackLanguage: track.preferredLanguageTag) {
@@ -92,14 +99,16 @@ struct RecognizeSubtitlesIntent: AppIntent {
                                                fallbackLanguage: languages.first,
                                                outputFolder: nil,
                                                conflictPolicy: .addSuffix,
-                                               existing: OutputNaming.existingNames(in: folder))
+                                               existing: OutputNaming.existingNames(in: folder),
+                                               claimed: claimed)
             try SRTFile.render(cues).write(to: destination, atomically: true, encoding: .utf8)
+            claimed.insert(destination.lastPathComponent)
             outputs.append(destination)
         }
         return outputs
     }
 
-    static func select(from tracks: [TrackInfo], languages: [String], choice: TrackChoice) -> [TrackInfo] {
+    nonisolated static func select(from tracks: [TrackInfo], languages: [String], choice: TrackChoice) -> [TrackInfo] {
         switch choice {
         case .all:
             return tracks

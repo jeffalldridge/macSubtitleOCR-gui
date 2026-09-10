@@ -495,3 +495,62 @@ private let fixtures = URL(fileURLWithPath: #filePath)
         #expect(!queue.hasUnsavedEdits)
     }
 }
+
+@Suite struct OutputCollisionTests {
+    private let film = URL(fileURLWithPath: "/Users/me/Movies/Film.mkv")
+
+    /// An MKV with a full English track and an English forced track, neither
+    /// named — the same filename by every other rule.
+    private let full = TrackInfo(id: 1, format: .pgs, language: "eng")
+    private let forced = TrackInfo(id: 2, format: .pgs, language: "eng", isForced: true)
+
+    private func url(_ track: TrackInfo, policy: AppSettings.ConflictPolicy,
+                     existing: Set<String>, claimed: Set<String>) -> URL {
+        OutputNaming.url(for: track, sourceURL: film, fallbackLanguage: nil, outputFolder: nil,
+                         conflictPolicy: policy, existing: existing, claimed: claimed)
+    }
+
+    @Test func replaceDoesNotClobberAFileThisRunJustWrote() {
+        let first = url(full, policy: .replace, existing: [], claimed: [])
+        #expect(first.lastPathComponent == "Film.eng.srt")
+
+        let second = url(forced, policy: .replace, existing: [], claimed: [first.lastPathComponent])
+        #expect(second.lastPathComponent != first.lastPathComponent,
+                "the second track must not destroy the first")
+        #expect(second.lastPathComponent == "Film.eng-1.srt")
+    }
+
+    @Test func replaceStillOverwritesWhatWasAlreadyOnDisk() {
+        let produced = url(full, policy: .replace, existing: ["Film.eng.srt"], claimed: [])
+        #expect(produced.lastPathComponent == "Film.eng.srt", "that is what Replace means")
+    }
+
+    @Test func addSuffixAvoidsBothDiskAndThisRun() {
+        let produced = url(forced, policy: .addSuffix,
+                           existing: ["Film.eng.srt"], claimed: ["Film.eng-1.srt"])
+        #expect(produced.lastPathComponent == "Film.eng-2.srt")
+    }
+}
+
+@Suite struct StreamCacheEvictionTests {
+    @Test func aVobSubPairIsEvictedTogether() throws {
+        let dir = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let cache = StreamCache(directory: dir)
+
+        try cache.store(.vobsub(sub: Data(repeating: 1, count: 800), idx: "old"), key: "old")
+        for name in ["old.sub", "old.idx"] {
+            try FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(-100)],
+                                                  ofItemAtPath: dir.appendingPathComponent(name).path)
+        }
+        try cache.store(.vobsub(sub: Data(repeating: 1, count: 800), idx: "new"), key: "new")
+
+        cache.prune(maxBytes: 1000, maxAge: 3600)
+
+        // The older pair goes as a unit; a half-deleted pair is unusable and
+        // would still count toward the cache size.
+        #expect(cache.cachedURLs(for: "old", format: .vobsub) == nil)
+        #expect(!FileManager.default.fileExists(atPath: dir.appendingPathComponent("old.idx").path))
+        #expect(cache.cachedURLs(for: "new", format: .vobsub) != nil)
+    }
+}

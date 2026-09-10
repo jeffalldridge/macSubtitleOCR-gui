@@ -38,6 +38,9 @@ public struct PGSStream: SubtitleStream {
         let state: UInt8
         let objectCount: Int
         let definesObjects: Bool
+        /// A composition that only recolours what is already on screen, which
+        /// is how fades are encoded. It never starts a new cue.
+        let isPaletteUpdate: Bool
     }
 
     private static func index(_ bytes: UnsafeRawBufferPointer) throws -> ([CueInfo], [String]) {
@@ -50,6 +53,7 @@ public struct PGSStream: SubtitleStream {
         var setState: UInt8 = 0
         var setObjectCount = 0
         var setDefinesObjects = false
+        var setIsPaletteUpdate = false
 
         if bytes.count >= PGSSegmentHeader.length, PGSSegmentHeader.parse(bytes, at: 0) == nil {
             throw EngineError.invalidData("This is not a PGS (.sup) stream.")
@@ -73,6 +77,7 @@ public struct PGSStream: SubtitleStream {
                     setState = composition.state
                     setObjectCount = composition.objects.count
                     setDefinesObjects = false
+                    setIsPaletteUpdate = composition.paletteUpdate
                 } else {
                     warnings.append("A composition segment at byte \(offset) could not be read.")
                     setStart = nil
@@ -85,7 +90,8 @@ public struct PGSStream: SubtitleStream {
                                                   range: start..<header.payloadRange.upperBound,
                                                   state: setState,
                                                   objectCount: setObjectCount,
-                                                  definesObjects: setDefinesObjects))
+                                                  definesObjects: setDefinesObjects,
+                                                  isPaletteUpdate: setIsPaletteUpdate))
                 }
                 setStart = nil
             default:
@@ -112,10 +118,11 @@ public struct PGSStream: SubtitleStream {
         for set in displaySets {
             if set.objectCount == 0 {
                 close(at: set.pts)                       // clear screen
-            } else if set.definesObjects || open == nil {
+            } else if set.definesObjects || (open == nil && !set.isPaletteUpdate) {
                 // Either new image data, or a display set that re-presents an
                 // object defined earlier in the epoch while nothing is on
-                // screen. Both put a subtitle up.
+                // screen. Both put a subtitle up. A palette-only update never
+                // does, so it must not open an empty cue.
                 if set.state == PGSCompositionState.acquisitionPoint, open != nil {
                     continue                              // repeat for seeking; same picture
                 }

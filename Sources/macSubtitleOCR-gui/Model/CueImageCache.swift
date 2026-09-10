@@ -11,7 +11,10 @@ final class CueImageCache {
     private var inFlight: [String: Task<CGImage?, Never>] = [:]
 
     init() {
+        // A cropped 1080p cue is around a megabyte, so a count limit alone
+        // lets a long track pin hundreds of them. Cost is the deciding limit.
         cache.countLimit = 400
+        cache.totalCostLimit = 96 * 1024 * 1024
     }
 
     func image(for track: QueueTrack, index: Int, style: IndexedBitmap.RenderStyle = .display) async -> CGImage? {
@@ -27,7 +30,10 @@ final class CueImageCache {
         inFlight[key as String] = task
         let image = await task.value
         inFlight[key as String] = nil
-        if let image { cache.setObject(image, forKey: key) }
+        if let image {
+            let cost = image.bytesPerRow * image.height
+            cache.setObject(image, forKey: key, cost: cost)
+        }
         return image
     }
 
