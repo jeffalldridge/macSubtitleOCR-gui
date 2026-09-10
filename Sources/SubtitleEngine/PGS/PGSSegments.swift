@@ -152,6 +152,13 @@ struct PGSObject {
     static let firstFragment: UInt8 = 0x80
     static let lastFragment: UInt8 = 0x40
 
+    /// A PGS object cannot be larger than the video frame it is drawn on, and
+    /// Blu-ray tops out at 1920x1080. This allows well past 4K in both
+    /// directions, and still keeps a crafted 92-byte file from asking for a
+    /// four-gigabyte allocation.
+    static let maxDimension = 8192
+    static let maxPixels = 8192 * 4320
+
     let id: UInt16
     private(set) var width = 0
     private(set) var height = 0
@@ -165,7 +172,8 @@ struct PGSObject {
         let flags = bytes[range.lowerBound + 3]
         guard flags & Self.firstFragment != 0,
               let width = bytes.readUInt16BE(at: range.lowerBound + 7),
-              let height = bytes.readUInt16BE(at: range.lowerBound + 9) else { return nil }
+              let height = bytes.readUInt16BE(at: range.lowerBound + 9),
+              Self.isPlausibleSize(width: Int(width), height: Int(height)) else { return nil }
         self.width = Int(width)
         self.height = Int(height)
         rle = Array(bytes[(range.lowerBound + 11)..<range.upperBound])
@@ -186,6 +194,12 @@ struct PGSObject {
 
     static func isFirstFragment(_ bytes: UnsafeRawBufferPointer, range: Range<Int>) -> Bool {
         range.count >= 4 && bytes[range.lowerBound + 3] & firstFragment != 0
+    }
+
+    static func isPlausibleSize(width: Int, height: Int) -> Bool {
+        width > 0 && height > 0
+            && width <= maxDimension && height <= maxDimension
+            && width * height <= maxPixels
     }
 
     func decode() -> PGSRLE.Result {

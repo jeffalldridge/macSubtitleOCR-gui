@@ -53,9 +53,14 @@ extension MKVReader {
 
             func handle(block range: Range<Int>, clusterTimestamp: UInt64) {
                 guard let block = MKVBlock(bytes, range: range), block.trackNumber == wanted else { return }
-                let units = Int64(clusterTimestamp) + Int64(block.relativeTimestamp)
-                let nanoseconds = UInt64(max(units, 0)) * scale
-                let pts90k = nanoseconds * 9 / 100_000
+                // Every term here comes straight out of the file, so all of
+                // it saturates rather than traps. A nonsense timestamp yields
+                // a nonsense cue time, which the user can see; a trap would
+                // take the app down.
+                let units = Int64(clamping: clusterTimestamp).addingReportingOverflow(Int64(block.relativeTimestamp))
+                let ticks = units.overflow ? Int64.max : units.partialValue
+                let nanoseconds = UInt64(max(ticks, 0)).multipliedReportingOverflow(by: scale)
+                let pts90k = nanoseconds.overflow ? UInt64.max / 100_000 : nanoseconds.partialValue / 100_000 * 9
                 for frame in block.frames where !frame.isEmpty {
                     let slice = bytes[frame]
                     switch track.format {
@@ -65,7 +70,7 @@ extension MKVReader {
                         let position = output.count
                         MKVFrameWrapper.wrapVobSub(slice, pts90k: pts90k, into: &output)
                         idxLines += "timestamp: \(MKVFrameWrapper.idxTimestamp(pts90k: pts90k)), "
-                        idxLines += String(format: "filepos: %09X\n", position)
+                        idxLines += String(format: "filepos: %09lX\n", position)
                     }
                 }
             }

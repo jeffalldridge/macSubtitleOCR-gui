@@ -2,9 +2,18 @@ import Foundation
 
 /// SubRip (.srt) rendering and parsing.
 public enum SRTFile {
+    /// The largest time SubRip can express: `99:59:59,999`.
+    public static let maxTime: TimeInterval = 99 * 3600 + 59 * 60 + 59.999
+
     /// `HH:MM:SS,mmm`
+    ///
+    /// Clamps rather than traps. A decoded timestamp can be infinite or NaN
+    /// when a file's own numbers are nonsense, and taking the app down for
+    /// one bad cue is never the right answer.
     public static func timestamp(_ time: TimeInterval) -> String {
-        let totalMilliseconds = max(0, Int((time * 1000).rounded()))
+        guard time.isFinite else { return time > 0 ? timestamp(maxTime) : timestamp(0) }
+        let clamped = min(max(time, 0), maxTime)
+        let totalMilliseconds = max(0, Int((clamped * 1000).rounded()))
         let hours = totalMilliseconds / 3_600_000
         let minutes = (totalMilliseconds / 60_000) % 60
         let seconds = (totalMilliseconds / 1000) % 60
@@ -21,8 +30,10 @@ public enum SRTFile {
             return nil
         }
         let parts = mainAndMillis[0].split(separator: ":").compactMap { Int($0) }
-        guard parts.count == 3 else { return nil }
-        return TimeInterval(parts[0] * 3600 + parts[1] * 60 + parts[2]) + TimeInterval(millis) / 1000
+        // Hours are bounded so a crafted file cannot overflow the arithmetic.
+        guard parts.count == 3, parts.allSatisfy({ $0 >= 0 }), parts[0] <= 99_999 else { return nil }
+        return TimeInterval(parts[0]) * 3600 + TimeInterval(parts[1]) * 60 + TimeInterval(parts[2])
+            + TimeInterval(millis) / 1000
     }
 
     public static func render(_ cues: [SRTCue]) -> String {

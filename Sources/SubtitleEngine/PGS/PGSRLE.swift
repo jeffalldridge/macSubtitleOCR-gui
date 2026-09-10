@@ -18,7 +18,9 @@ enum PGSRLE {
 
     static func decode<C: RandomAccessCollection>(_ data: C, width: Int, height: Int) -> Result
         where C.Element == UInt8, C.Index == Int {
-        guard width > 0, height > 0 else { return Result(pixels: [], complete: true) }
+        guard PGSObject.isPlausibleSize(width: width, height: height) else {
+            return Result(pixels: [], complete: false)
+        }
         var pixels = [UInt8](repeating: 0, count: width * height)
         var i = data.startIndex
         let end = data.endIndex

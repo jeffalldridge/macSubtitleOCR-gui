@@ -17,18 +17,25 @@ public enum SRTTiming {
         var resolved: [TimeInterval] = []
         resolved.reserveCapacity(starts.count)
 
+        /// Nonsense from the file becomes a usable number rather than
+        /// spreading through every later calculation.
+        func sane(_ time: TimeInterval?) -> TimeInterval? {
+            guard let time, time.isFinite else { return nil }
+            return min(max(time, 0), SRTFile.maxTime)
+        }
+
         for i in starts.indices {
-            let start = starts[i]
-            let nextStart = i + 1 < starts.count ? starts[i + 1] : nil
+            let start = sane(starts[i]) ?? 0
+            let nextStart = i + 1 < starts.count ? sane(starts[i + 1]) : nil
             var end: TimeInterval
 
-            if let known = ends[i], known > start {
+            if let known = sane(ends[i]), known > start {
                 end = known
                 if let nextStart, end > nextStart { end = nextStart }
             } else {
                 end = start + defaultDuration
                 if let nextStart { end = min(end, nextStart - gap) }
-                if let known = ends[i], known <= start, let nextStart {
+                if let known = sane(ends[i]), known <= start, let nextStart {
                     // A broken end: fall back to the next cue's start.
                     end = min(nextStart, start + defaultDuration)
                 }

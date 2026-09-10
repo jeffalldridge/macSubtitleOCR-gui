@@ -112,7 +112,10 @@ public struct PGSStream: SubtitleStream {
         for set in displaySets {
             if set.objectCount == 0 {
                 close(at: set.pts)                       // clear screen
-            } else if set.definesObjects {
+            } else if set.definesObjects || open == nil {
+                // Either new image data, or a display set that re-presents an
+                // object defined earlier in the epoch while nothing is on
+                // screen. Both put a subtitle up.
                 if set.state == PGSCompositionState.acquisitionPoint, open != nil {
                     continue                              // repeat for seeking; same picture
                 }
@@ -178,10 +181,11 @@ public struct PGSStream: SubtitleStream {
         }
 
         guard let composition, !composition.objects.isEmpty, !objects.isEmpty else { return nil }
-        let palette = palettes[composition.paletteID] ?? palettes.values.first
-        guard let palette else {
-            throw EngineError.invalidData("A cue has no palette.")
-        }
+        // A display set may legally reference a palette defined earlier in the
+        // same epoch, which this display set's bytes do not contain. Render
+        // nothing rather than failing: one blank cue is a far better outcome
+        // than losing every cue already recognized in the track.
+        guard let palette = palettes[composition.paletteID] ?? palettes.values.first else { return nil }
 
         return composite(composition: composition, objects: objects, palette: palette)
     }
@@ -223,6 +227,8 @@ public struct PGSStream: SubtitleStream {
 
         if placed.count == 1 {
             let only = placed[0]
+            guard PGSObject.isPlausibleSize(width: only.width, height: only.height),
+                  only.pixels.count == only.width * only.height else { return nil }
             return IndexedBitmap(width: only.width, height: only.height, pixels: only.pixels, palette: palette.rgba)
         }
 
@@ -232,7 +238,7 @@ public struct PGSStream: SubtitleStream {
         let maxY = placed.map { $0.y + $0.height }.max()!
         let width = maxX - minX
         let height = maxY - minY
-        guard width > 0, height > 0, width * height <= 8192 * 8192 else { return nil }
+        guard PGSObject.isPlausibleSize(width: width, height: height) else { return nil }
 
         let background = transparentIndex(in: palette)
         var canvas = [UInt8](repeating: background, count: width * height)

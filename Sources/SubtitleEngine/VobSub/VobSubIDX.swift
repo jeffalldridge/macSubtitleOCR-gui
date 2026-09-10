@@ -77,9 +77,12 @@ struct VobSubIDX: Sendable {
         let pos = parts[1][posRange.upperBound...].trimmingCharacters(in: .whitespaces)
         guard let offset = Int(pos, radix: 16) else { return nil }
 
+        // `Double("inf")` and `Double("nan")` both parse, and an infinite cue
+        // time propagates all the way to a trap when the SRT is written.
         let pieces = time.split(separator: ":").compactMap { Double($0) }
-        guard pieces.count == 4 else { return nil }
+        guard pieces.count == 4, pieces.allSatisfy({ $0.isFinite && $0 >= 0 }) else { return nil }
         let seconds = pieces[0] * 3600 + pieces[1] * 60 + pieces[2] + pieces[3] / 1000
+        guard seconds.isFinite, seconds >= 0, offset >= 0 else { return nil }
         return Entry(timestamp: seconds, offset: offset)
     }
 }

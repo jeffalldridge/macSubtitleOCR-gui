@@ -12,6 +12,13 @@ public struct MKVReader: Sendable {
 
     static let logger = Logger(subsystem: "com.tentstudios.macSubtitleOCR", category: "engine.mkv")
 
+    /// Nanoseconds per timestamp tick. One second per tick is already absurd;
+    /// beyond it the presentation-time arithmetic would overflow.
+    static let maxTimestampScale: UInt64 = 1_000_000_000
+    /// Matroska track numbers are small. This is generous and keeps the value
+    /// representable.
+    static let maxTrackNumber = 1_000_000
+
     public init(url: URL) throws {
         let data = try Data.mapped(contentsOf: url)
         try self.init(data: data, url: url)
@@ -46,26 +53,39 @@ public struct MKVReader: Sendable {
             var durationUnits: Double?
             var title: String?
             var tracksElement: EBMLReader.Element?
+            var sawInfo = false
 
             reader.forEachChild(of: segment) { child in
                 switch child.id {
                 case MatroskaID.info:
                     reader.forEachChild(of: child) { field in
                         switch field.id {
-                        case MatroskaID.timestampScale: timestampScale = reader.uint(field) ?? timestampScale
-                        case MatroskaID.duration: durationUnits = reader.float(field)
-                        case MatroskaID.title: title = reader.string(field)
-                        default: break
+                        case MatroskaID.timestampScale:
+                            // Matroska's scale is nanoseconds per tick. Zero
+                            // would make every timestamp zero; an enormous
+                            // value would overflow the PTS arithmetic later.
+                            if let value = reader.uint(field), (1...Self.maxTimestampScale).contains(value) {
+                                timestampScale = value
+                            }
+                        case MatroskaID.duration:
+                            durationUnits = reader.float(field).flatMap { $0.isFinite && $0 >= 0 ? $0 : nil }
+                        case MatroskaID.title:
+                            title = reader.string(field)
+                        default:
+                            break
                         }
                         return true
                     }
+                    sawInfo = true
                 case MatroskaID.tracks:
                     tracksElement = child
                 default:
                     break
                 }
-                // Keep going: Tracks can follow the first Cluster in unusual files.
-                return tracksElement == nil
+                // Neither element's position is fixed: Tracks can follow the
+                // first Cluster, and Info can follow Tracks. Keep walking
+                // until both are in hand.
+                return tracksElement == nil || !sawInfo
             }
 
             guard let tracksElement else { throw EngineError.noTracksElement }
@@ -139,6 +159,9 @@ public struct MKVReader: Sendable {
         }
 
         guard let number, let codecID, type == MatroskaID.TrackType.subtitle else { return nil }
+        // Track numbers are a VINT, so a crafted file can declare one that no
+        // Int can hold. Matroska's own limit is far below this.
+        guard number >= 1, number <= UInt64(Self.maxTrackNumber) else { return nil }
         guard let format = BitmapSubtitleFormat(codecID: codecID) else {
             return .otherSubtitle(codecID: codecID)
         }
