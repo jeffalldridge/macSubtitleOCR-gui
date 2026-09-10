@@ -82,6 +82,17 @@ public enum SubtitleSource: Sendable, Equatable, Hashable {
         return try MKVReader(url: url).extract(trackNumber: track.id, progress: progress)
     }
 
+    /// Extract several tracks in one pass over the container.
+    ///
+    /// Reading one track costs a walk of the whole file, so pulling every
+    /// track the user might want at once is close to free compared with
+    /// doing it again per track.
+    public func extract(tracks: [TrackInfo],
+                        progress: (@Sendable (Double) -> Void)? = nil) throws -> [Int: ExtractedTrack] {
+        guard case .mkv(let url) = self, !tracks.isEmpty else { return [:] }
+        return try MKVReader(url: url).extract(trackNumbers: tracks.map(\.id), progress: progress)
+    }
+
     /// Open a decodable stream for `track`.
     public func loadStream(for track: TrackInfo,
                            progress: (@Sendable (Double) -> Void)? = nil) throws -> any SubtitleStream {

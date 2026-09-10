@@ -22,25 +22,54 @@ extension MKVReader {
     /// cancellation between clusters (throws `EngineError.cancelled`).
     public func extract(trackNumber: Int,
                         progress: (@Sendable (Double) -> Void)? = nil) throws -> ExtractedTrack {
+        let extracted = try extract(trackNumbers: [trackNumber], progress: progress)
+        guard let track = extracted[trackNumber] else { throw EngineError.trackNotFound(trackNumber) }
+        return track
+    }
+
+    /// Walk the clusters once and gather every frame of *several* tracks.
+    ///
+    /// Finding one track's blocks means reading a header in every cluster,
+    /// spread across the whole file, so a container with eight subtitle
+    /// tracks would otherwise cost eight full passes over it. Asking for all
+    /// of them together costs one.
+    public func extract(trackNumbers: [Int],
+                        progress: (@Sendable (Double) -> Void)? = nil) throws -> [Int: ExtractedTrack] {
         let info = try probe()
-        guard let track = info.tracks.first(where: { $0.id == trackNumber }) else {
-            throw EngineError.trackNotFound(trackNumber)
+        var wanted: [UInt64: TrackInfo] = [:]
+        for number in trackNumbers {
+            guard let track = info.tracks.first(where: { $0.id == number }) else {
+                throw EngineError.trackNotFound(number)
+            }
+            wanted[UInt64(number)] = track
         }
+        guard !wanted.isEmpty else { return [:] }
+
         let signposter = OSSignposter(logger: Self.logger)
         let state = signposter.beginInterval("extract")
         defer { signposter.endInterval("extract", state) }
 
         return try data.withUnsafeBytes { bytes in
+            // The walk touches a header in every cluster, spread over the
+            // whole file. Telling the kernel it is a sequential pass turns a
+            // storm of small scattered faults into read-ahead.
+            if let base = bytes.baseAddress, bytes.count > 0 {
+                madvise(UnsafeMutableRawPointer(mutating: base), bytes.count, MADV_SEQUENTIAL)
+            }
+
             let reader = EBMLReader(bytes: bytes)
             guard let segment = Self.segment(in: reader) else { throw EngineError.notMatroska(url) }
 
-            var output = Data()
-            var idxLines = ""
+            var output: [UInt64: Data] = [:]
+            var idxLines: [UInt64: String] = [:]
+            for number in wanted.keys {
+                output[number] = Data()
+                idxLines[number] = ""
+            }
             var cancelled = false
             var lastReported = -1
             let total = Double(max(bytes.count, 1))
             let scale = info.timestampScale
-            let wanted = UInt64(trackNumber)
 
             func report(_ offset: Int) {
                 guard let progress else { return }
@@ -52,7 +81,9 @@ extension MKVReader {
             }
 
             func handle(block range: Range<Int>, clusterTimestamp: UInt64) {
-                guard let block = MKVBlock(bytes, range: range), block.trackNumber == wanted else { return }
+                guard let block = MKVBlock(bytes, range: range),
+                      let track = wanted[block.trackNumber] else { return }
+                let number = block.trackNumber
                 // Every term here comes straight out of the file, so all of
                 // it saturates rather than traps. A nonsense timestamp yields
                 // a nonsense cue time, which the user can see; a trap would
@@ -65,12 +96,13 @@ extension MKVReader {
                     let slice = bytes[frame]
                     switch track.format {
                     case .pgs:
-                        MKVFrameWrapper.wrapPGS(slice, pts90k: UInt32(truncatingIfNeeded: pts90k), into: &output)
+                        MKVFrameWrapper.wrapPGS(slice, pts90k: UInt32(truncatingIfNeeded: pts90k),
+                                                into: &output[number]!)
                     case .vobsub:
-                        let position = output.count
-                        MKVFrameWrapper.wrapVobSub(slice, pts90k: pts90k, into: &output)
-                        idxLines += "timestamp: \(MKVFrameWrapper.idxTimestamp(pts90k: pts90k)), "
-                        idxLines += String(format: "filepos: %09lX\n", position)
+                        let position = output[number]!.count
+                        MKVFrameWrapper.wrapVobSub(slice, pts90k: pts90k, into: &output[number]!)
+                        idxLines[number]! += "timestamp: \(MKVFrameWrapper.idxTimestamp(pts90k: pts90k)), "
+                        idxLines[number]! += String(format: "filepos: %09lX\n", position)
                     }
                 }
             }
@@ -107,12 +139,18 @@ extension MKVReader {
             if cancelled { throw EngineError.cancelled }
             progress?(1)
 
-            switch track.format {
-            case .pgs:
-                return .pgs(output)
-            case .vobsub:
-                return .vobsub(sub: output, idx: Self.synthesizeIDX(for: track, timestampLines: idxLines))
+            var result: [Int: ExtractedTrack] = [:]
+            for (number, track) in wanted {
+                switch track.format {
+                case .pgs:
+                    result[Int(number)] = .pgs(output[number] ?? Data())
+                case .vobsub:
+                    result[Int(number)] = .vobsub(sub: output[number] ?? Data(),
+                                                  idx: Self.synthesizeIDX(for: track,
+                                                                          timestampLines: idxLines[number] ?? ""))
+                }
             }
+            return result
         }
     }
 
