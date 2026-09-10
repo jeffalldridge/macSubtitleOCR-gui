@@ -5,6 +5,10 @@
 > text with Apple's Vision framework — then lets you check and fix every cue
 > before you mux.
 
+<p align="center">
+  <img src="docs/screenshots/main-window.png" width="700" alt="macSubtitleOCR reviewing recognized cues next to their original bitmaps">
+</p>
+
 [![CI](https://github.com/jeffalldridge/macSubtitleOCR-gui/actions/workflows/ci.yml/badge.svg)](https://github.com/jeffalldridge/macSubtitleOCR-gui/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/jeffalldridge/macSubtitleOCR-gui)](https://github.com/jeffalldridge/macSubtitleOCR-gui/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/jeffalldridge/macSubtitleOCR-gui/total)](https://github.com/jeffalldridge/macSubtitleOCR-gui/releases)
@@ -45,6 +49,10 @@ MIT-licensed. See [Credits](#credits).
 - **Fits the Mac.** Open With in the Finder, a Services menu item, Open
   Recent, a Shortcuts action, notifications, Dock progress, drag an SRT
   straight out of the window.
+
+<p align="center">
+  <img src="docs/screenshots/track-language.png" width="620" alt="Correcting a track's language from the queue, with the full list of Vision's supported languages">
+</p>
 
 ### On Apple silicon Macs with Apple Intelligence
 
@@ -97,7 +105,11 @@ Apple Intelligence clean-up needs macOS 26 with Apple Intelligence turned on.
 2. **Pick tracks.** The queue across the top of the window lists every file
    and, underneath it, every PGS and VobSub track with its language, cue
    count, and what it is doing. Tracks matching your language preference are
-   ticked automatically.
+   ticked automatically. Click **Assign Language…** on an unknown track, or
+   click an existing language to correct it. The choice applies to that track’s
+   recognition, translation source, and next SRT filename. **From File** restores
+   a source tag; untagged tracks can return to recognition hints. Changing a
+   language after conversion does not rename or re-recognize an existing SRT.
 3. **Choose where they go.** The toolbar says where subtitle files will land.
    Next to the film is the default; you can pick a folder, or have the app
    ask each time.

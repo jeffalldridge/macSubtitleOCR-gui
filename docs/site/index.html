@@ -109,7 +109,7 @@
                     "name": "How do I convert PGS subtitles to SRT on a Mac?",
                     "acceptedAnswer": {
                         "@type": "Answer",
-                        "text": "Drop an MKV or SUP file onto macSubtitleOCR, tick the PGS subtitle track you want, and press Recognize. The app uses Apple's Vision framework to recognize the bitmap subtitles, shows you every cue next to the image it read, and writes a clean SRT file next to your source. Nothing else needs to be installed."
+                        "text": "Drop an MKV or SUP file onto macSubtitleOCR, tick the PGS subtitle track you want, and press Make Subtitles. The app uses Apple's Vision framework to recognize the bitmap subtitles, shows you every cue next to the image it read, and writes a clean SRT file next to your source. Nothing else needs to be installed."
                     }
                 },
                 {
@@ -178,6 +178,9 @@
             <a class="button" href="https://github.com/jeffalldridge/macSubtitleOCR-gui">View on GitHub →</a>
         </div>
         <p class="version">v1.0.0 · signed &amp; notarized · universal · MIT licensed · macOS 15+</p>
+        <div class="hero-shot">
+            <img src="main-window.png" width="1400" height="877" alt="macSubtitleOCR reviewing recognized cues next to their original bitmaps">
+        </div>
     </div>
 </header>
 
@@ -259,11 +262,14 @@
         <p class="lede">Add, pick, make, review. No configuration required.</p>
         <ol class="steps">
             <li><strong>Add files.</strong> Drag them onto the window, press ⌘O, use the Finder's Open With menu, or select files and choose Services ▸ Recognize Subtitles. Drop a folder to queue a whole season.</li>
-            <li><strong>Pick tracks.</strong> The queue across the top of the window expands each file into its PGS and VobSub tracks, with language, cue count, and what each one is doing. Tracks in your language are ticked automatically.</li>
+            <li><strong>Pick tracks.</strong> The queue across the top of the window expands each file into its PGS and VobSub tracks, with language, cue count, and what each one is doing. Tracks in your language are ticked automatically — click a track's language to correct it.</li>
             <li><strong>Choose where they go.</strong> The toolbar says where the subtitle files will land. Next to the film is the default; pick a folder instead, or have the app ask each time.</li>
             <li><strong>Make subtitles.</strong> Press the play button, or ⌘R. Progress counts real cues — "312 of 1,204" — and the same button becomes Stop, which never loses finished work.</li>
             <li><strong>Review.</strong> Every cue appears beside its original bitmap, with low-confidence ones flagged. Correct anything that's wrong; the file is rewritten as you go.</li>
         </ol>
+        <div class="shot">
+            <img src="track-language.png" width="1400" height="890" alt="Correcting a track's language from the queue, with the full list of Vision's supported languages">
+        </div>
     </div>
 </section>
 
@@ -296,7 +302,7 @@
         <div class="faq">
             <details>
                 <summary>How do I convert PGS subtitles to SRT on a Mac?</summary>
-                <div class="answer"><p>Drop an MKV or SUP file onto macSubtitleOCR, tick the PGS track you want, and press Recognize. Apple's Vision framework reads the bitmap subtitles and writes a clean SRT next to your source file — ready to mux into an MP4 with <a href="https://subler.org">Subler</a> or your tool of choice. You can check every cue against its original image first.</p></div>
+                <div class="answer"><p>Drop an MKV or SUP file onto macSubtitleOCR, tick the PGS track you want, and press Make Subtitles. Apple's Vision framework reads the bitmap subtitles and writes a clean SRT next to your source file — ready to mux into an MP4 with <a href="https://subler.org">Subler</a> or your tool of choice. You can check every cue against its original image first.</p></div>
             </details>
             <details>
                 <summary>Does it handle VobSub (.sub / .idx) subtitles?</summary>

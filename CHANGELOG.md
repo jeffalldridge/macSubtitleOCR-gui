@@ -60,14 +60,21 @@ you mux.
   project, with full license texts.
 - **A universal binary.** The published `.dmg` runs natively on Apple silicon
   and Intel.
-- **Track languages drive recognition.** A track tagged `jpn` is recognized as
-  Japanese even when your default is English.
+- **Track languages drive recognition, and you can correct them.** A track
+  tagged `jpn` is recognized as Japanese even when your default is English.
+  Click a track's language, in the queue or the review header, to reassign it
+  from Vision's full language list — it changes recognition, the translation
+  source, and the next SRT's filename. Existing output and the source file
+  are untouched; *From File* restores the original tag.
 - **A destination menu in the toolbar**, beside the button that starts the
   work, so where the subtitle files land is visible at the moment it matters.
   Next to the film is the default; you can send them to one folder instead, or
   choose *Ask each time* and pick a folder before each run.
 - **Search and a needs-review filter** in the track header, next to the cue
   list they act on. ⌘F puts the cursor in the search field.
+- **Previous Cue and Next Cue** step through whatever the search and filter
+  are currently showing, with a position counter between them. Mark Reviewed
+  clears a flagged cue without changing its text.
 - **Remove (⌘⌫)** takes the selected file out of the queue, from the toolbar
   or the File menu.
 - **An update check** against the project's GitHub releases, once a day, with
@@ -125,6 +132,11 @@ one run can no longer write to the same filename and destroy each other.
 Files dropped on the window mid-run join the run instead of being silently
 ignored, redo no longer breaks the undo chain, and the same track can no
 longer be read out of a container twice at once.
+
+**A save that fails is no longer silent.** A track whose `.srt` couldn't be
+written shows the error inline with a Retry Save button, instead of a note
+buried in Issues. Quitting, removing the file, or clearing the queue while a
+save is still failing asks first rather than losing the correction.
 
 **Opening a large file no longer takes a minute.** Foundation's "map the file
 if it is safe" decides safety by volume and declines on most external drives,
