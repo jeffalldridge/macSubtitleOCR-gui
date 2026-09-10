@@ -42,6 +42,22 @@ enum MatroskaID {
     static let language: UInt32 = 0x22B5_9C
     static let languageBCP47: UInt32 = 0x22B5_9D
 
+    // ContentEncodings
+    static let contentEncodings: UInt32 = 0x6D80
+    static let contentEncoding: UInt32 = 0x6240
+    static let contentEncodingScope: UInt32 = 0x5032
+    static let contentEncodingType: UInt32 = 0x5033
+    static let contentCompression: UInt32 = 0x5034
+    static let contentCompAlgo: UInt32 = 0x4254
+    static let contentCompSettings: UInt32 = 0x4255
+
+    // Cues
+    static let cuePoint: UInt32 = 0xBB
+    static let cueTime: UInt32 = 0xB3
+    static let cueTrackPositions: UInt32 = 0xB7
+    static let cueTrack: UInt32 = 0xF7
+    static let cueClusterPosition: UInt32 = 0xF1
+
     // Cluster
     static let timestamp: UInt32 = 0xE7
     static let simpleBlock: UInt32 = 0xA3

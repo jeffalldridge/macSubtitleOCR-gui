@@ -128,4 +128,18 @@ enum PGSBuilder {
     private static func be16(_ value: UInt16) -> [UInt8] {
         withUnsafeBytes(of: value.bigEndian) { Array($0) }
     }
+
+    /// The same segments as they appear inside a Matroska block: the 13-byte
+    /// `PG` headers of a `.sup` file are a container detail, and Matroska
+    /// carries its own timestamps instead.
+    static func bareSegments(_ sup: [UInt8]) -> [UInt8] {
+        var out: [UInt8] = []
+        var offset = 0
+        while offset + 13 <= sup.count {
+            let length = Int(sup[offset + 11]) << 8 | Int(sup[offset + 12])
+            out += sup[(offset + 10)..<min(offset + 13 + length, sup.count)]
+            offset += 13 + length
+        }
+        return out
+    }
 }

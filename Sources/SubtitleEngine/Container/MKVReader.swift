@@ -144,6 +144,8 @@ public struct MKVReader: Sendable {
         var isDefault = true   // Matroska default for FlagDefault is 1
         var isForced = false
         var codecPrivate: Data?
+        var compression: ContentCompression = .none
+        var unreadable: String?
 
         reader.forEachChild(of: entry) { field in
             switch field.id {
@@ -156,6 +158,10 @@ public struct MKVReader: Sendable {
             case MatroskaID.flagDefault: isDefault = (reader.uint(field) ?? 1) != 0
             case MatroskaID.flagForced: isForced = (reader.uint(field) ?? 0) != 0
             case MatroskaID.codecPrivate: codecPrivate = reader.data(field)
+            case MatroskaID.contentEncodings:
+                let parsed = ContentCompression.parse(field, reader: reader)
+                compression = parsed.compression
+                unreadable = parsed.unreadable
             default: break
             }
             return true
@@ -168,6 +174,10 @@ public struct MKVReader: Sendable {
         guard let format = BitmapSubtitleFormat(codecID: codecID) else {
             return .otherSubtitle(codecID: codecID)
         }
+        // An encrypted track cannot be decoded at all; report it as something
+        // other than a bitmap track so the UI explains it rather than
+        // producing an empty result.
+        if unreadable != nil { return .otherSubtitle(codecID: codecID) }
         let trimmedName = name?.trimmingCharacters(in: .whitespacesAndNewlines)
         return .bitmap(TrackInfo(id: Int(number),
                                  format: format,
@@ -177,6 +187,7 @@ public struct MKVReader: Sendable {
                                  name: trimmedName?.isEmpty == false ? trimmedName : nil,
                                  isDefault: isDefault,
                                  isForced: isForced,
-                                 codecPrivate: codecPrivate))
+                                 codecPrivate: codecPrivate,
+                                 compression: compression))
     }
 }

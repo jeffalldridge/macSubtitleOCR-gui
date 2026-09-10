@@ -120,8 +120,8 @@ import Testing
             (PGSBuilder.Object(id: 0, x: 0, y: 0), width: 8, height: 2, color: 1),
         ])
         // Strip the 13-byte PG headers: Matroska blocks carry bare segments.
-        let bare = stripPGHeaders(displaySet)
-        let clearBare = stripPGHeaders(PGSBuilder.clear(pts: 0))
+        let bare = PGSBuilder.bareSegments(displaySet)
+        let clearBare = PGSBuilder.bareSegments(PGSBuilder.clear(pts: 0))
         let data = EBMLBuilder.file([
             EBMLBuilder.info(timestampScale: 10_000_000),
             EBMLBuilder.tracks([EBMLBuilder.subtitleTrack(number: 1, codec: "S_HDMV/PGS")]),
@@ -154,14 +154,4 @@ import Testing
         }
     }
 
-    private func stripPGHeaders(_ sup: [UInt8]) -> [UInt8] {
-        var out: [UInt8] = []
-        var offset = 0
-        while offset + 13 <= sup.count {
-            let length = Int(sup[offset + 11]) << 8 | Int(sup[offset + 12])
-            out += sup[(offset + 10)..<(offset + 13 + length)]
-            offset += 13 + length
-        }
-        return out
-    }
 }

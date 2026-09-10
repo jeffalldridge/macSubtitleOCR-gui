@@ -16,6 +16,20 @@ public enum ExtractedTrack: Sendable {
 }
 
 extension MKVReader {
+    /// Whether the file's own index can take us straight to these tracks.
+    ///
+    /// When it can, reading one track is cheap and there is no reason to read
+    /// the others; when it cannot, every track costs a full pass and they
+    /// should all be taken together.
+    public func indexes(trackNumbers: [Int]) -> Bool {
+        data.withUnsafeBytes { bytes in
+            let reader = EBMLReader(bytes: bytes)
+            guard let segment = Self.segment(in: reader),
+                  let cues = MatroskaCues.parse(reader: reader, segment: segment) else { return false }
+            return cues.clusters(forTracks: trackNumbers.map(UInt64.init)) != nil
+        }
+    }
+
     /// Walk the clusters once and gather every frame of `trackNumber`.
     ///
     /// `progress` is called with 0…1 as the file is scanned. Honors task
@@ -60,6 +74,12 @@ extension MKVReader {
             let reader = EBMLReader(bytes: bytes)
             guard let segment = Self.segment(in: reader) else { throw EngineError.notMatroska(url) }
 
+            // If the file indexes these tracks, read only the clusters that
+            // hold them. On a 30 GB remux that is the difference between a
+            // few hundred megabytes and the whole file.
+            let indexedClusters = MatroskaCues.parse(reader: reader, segment: segment)?
+                .clusters(forTracks: Array(wanted.keys))
+
             var output: [UInt64: Data] = [:]
             var idxLines: [UInt64: String] = [:]
             for number in wanted.keys {
@@ -93,28 +113,29 @@ extension MKVReader {
                 let nanoseconds = UInt64(max(ticks, 0)).multipliedReportingOverflow(by: scale)
                 let pts90k = Self.ticks90kHz(nanoseconds: nanoseconds)
                 for frame in block.frames where !frame.isEmpty {
-                    let slice = bytes[frame]
-                    switch track.format {
-                    case .pgs:
-                        MKVFrameWrapper.wrapPGS(slice, pts90k: UInt32(truncatingIfNeeded: pts90k),
-                                                into: &output[number]!)
-                    case .vobsub:
-                        let position = output[number]!.count
-                        MKVFrameWrapper.wrapVobSub(slice, pts90k: pts90k, into: &output[number]!)
-                        idxLines[number]! += "timestamp: \(MKVFrameWrapper.idxTimestamp(pts90k: pts90k)), "
-                        idxLines[number]! += String(format: "filepos: %09lX\n", position)
+                    // Remuxers commonly deflate subtitle frames; handing the
+                    // decoder compressed bytes yields no subtitles at all.
+                    let raw = Data(bytes[frame])
+                    guard let decoded = track.compression.decode(raw) else { continue }
+                    decoded.withUnsafeBytes { (buffer: UnsafeRawBufferPointer) in
+                        let slice = buffer[0..<buffer.count]
+                        switch track.format {
+                        case .pgs:
+                            MKVFrameWrapper.wrapPGS(slice, pts90k: UInt32(truncatingIfNeeded: pts90k),
+                                                    into: &output[number]!)
+                        case .vobsub:
+                            let position = output[number]!.count
+                            MKVFrameWrapper.wrapVobSub(slice, pts90k: pts90k, into: &output[number]!)
+                            idxLines[number]! += "timestamp: \(MKVFrameWrapper.idxTimestamp(pts90k: pts90k)), "
+                            idxLines[number]! += String(format: "filepos: %09lX\n", position)
+                        }
                     }
                 }
             }
 
-            reader.forEachChild(of: segment) { child in
-                if Task.isCancelled {
-                    cancelled = true
-                    return false
-                }
-                guard child.id == MatroskaID.cluster else { return true }
+            func readCluster(_ cluster: EBMLReader.Element) {
                 var clusterTimestamp: UInt64 = 0
-                reader.forEachChild(of: child) { element in
+                reader.forEachChild(of: cluster) { element in
                     switch element.id {
                     case MatroskaID.timestamp:
                         clusterTimestamp = reader.uint(element) ?? 0
@@ -132,8 +153,55 @@ extension MKVReader {
                     }
                     return true
                 }
-                report(child.endOffset)
-                return true
+            }
+
+            func readIndexedClusters(_ offsets: [Int]) {
+                for (position, offset) in offsets.enumerated() {
+                    if Task.isCancelled {
+                        cancelled = true
+                        return
+                    }
+                    let absolute = segment.dataOffset + offset
+                    guard absolute >= 0, absolute < bytes.count,
+                          let cluster = reader.element(at: absolute),
+                          cluster.id == MatroskaID.cluster else { continue }
+                    readCluster(cluster)
+                    if let progress {
+                        let percent = Int(Double(position + 1) / Double(offsets.count) * 100)
+                        if percent > lastReported {
+                            lastReported = percent
+                            progress(min(Double(percent) / 100, 1))
+                        }
+                    }
+                }
+            }
+
+            func scanEveryCluster() {
+                reader.forEachChild(of: segment) { child in
+                    if Task.isCancelled {
+                        cancelled = true
+                        return false
+                    }
+                    guard child.id == MatroskaID.cluster else { return true }
+                    readCluster(child)
+                    report(child.endOffset)
+                    return true
+                }
+            }
+
+            if let indexedClusters, !indexedClusters.isEmpty {
+                Self.logger.debug("Reading \(indexedClusters.count) indexed clusters instead of the whole file")
+                readIndexedClusters(indexedClusters)
+                // An index that names clusters but yields nothing is wrong —
+                // stale after an edit, or written against a different file.
+                // Believing it would report a track as empty when it is not.
+                if !cancelled, output.values.allSatisfy(\.isEmpty) {
+                    Self.logger.notice("The index produced no subtitles; reading the whole file instead")
+                    lastReported = -1
+                    scanEveryCluster()
+                }
+            } else {
+                scanEveryCluster()
             }
 
             if cancelled { throw EngineError.cancelled }

@@ -1,3 +1,4 @@
+import zlib
 import Foundation
 import Testing
 @testable import SubtitleEngine
@@ -221,4 +222,122 @@ import Testing
         #expect(ends.count == 3)
         #expect(ends.allSatisfy { $0.isFinite })
     }
+}
+
+/// Matroska lets a track compress its frames, and remuxers routinely deflate
+/// subtitles. Missing that produced a track with no subtitles at all and no
+/// error to explain it.
+@Suite struct ContentCompressionTests {
+    @Test func inflatesAZlibStream() throws {
+        let original = Data("PGS subtitle payload, repeated. ".utf8.map { $0 } * 40)
+        let compressed = try #require(zlibCompress(original))
+        #expect(compressed.first == 0x78, "a real zlib stream, header and all")
+        #expect(ContentCompression.zlib.decode(compressed) == original)
+    }
+
+    @Test func headerStrippingPutsThePrefixBack() {
+        let stripped = Data([0x03, 0x04])
+        let compression = ContentCompression.headerStripping(Data([0x01, 0x02]))
+        #expect(compression.decode(stripped) == Data([0x01, 0x02, 0x03, 0x04]))
+    }
+
+    @Test func noCompressionIsAPassThrough() {
+        let frame = Data([1, 2, 3])
+        #expect(ContentCompression.none.decode(frame) == frame)
+        #expect(ContentCompression.none.isIdentity)
+    }
+
+    @Test func garbageInflatesToNothingRatherThanCrashing() {
+        #expect(ContentCompression.zlib.decode(Data([0x78, 0xDA, 0xFF, 0xFF, 0xFF])) == nil)
+        #expect(ContentCompression.zlib.decode(Data()) == nil)
+        #expect(ContentCompression.zlib.decode(Data([0x78])) == nil)
+    }
+
+    @Test func aCompressedTrackIsReadEndToEnd() throws {
+        // A PGS display set, deflated exactly as a remuxer would store it.
+        func segment(_ type: UInt8, _ body: [UInt8]) -> [UInt8] {
+            [type, UInt8(body.count >> 8), UInt8(body.count & 0xFF)] + body
+        }
+        let pcs = segment(0x16, [0x07, 0x80, 0x04, 0x38, 0x10, 0x00, 0x01, 0x80,
+                                 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0, 0, 0])
+        let pds = segment(0x14, [0x00, 0x00, 0x01, 235, 128, 128, 255])
+        var rle: [UInt8] = []
+        for _ in 0..<2 { rle += [0x00, 0x84, 0x01, 0x00, 0x00] }
+        let dataLength = UInt32(rle.count + 4)
+        let ods = segment(0x15, [0x00, 0x00, 0x00, 0xC0,
+                                 UInt8((dataLength >> 16) & 0xFF),
+                                 UInt8((dataLength >> 8) & 0xFF),
+                                 UInt8(dataLength & 0xFF),
+                                 0x00, 0x04, 0x00, 0x02] + rle)
+        let plain = Data(pcs + pds + ods + segment(0x80, []))
+        let deflated = try #require(zlibCompress(plain))
+
+        // ContentEncodings declaring zlib on frame data.
+        let compression = EBMLBuilder.element(0x5034, EBMLBuilder.uint(0x4254, 0))
+        let encoding = EBMLBuilder.element(0x6240,
+                                           EBMLBuilder.uint(0x5032, 1) + EBMLBuilder.uint(0x5033, 0) + compression)
+        let encodings = EBMLBuilder.element(0x6D80, encoding)
+
+        let data = EBMLBuilder.file([
+            EBMLBuilder.info(),
+            EBMLBuilder.tracks([
+                EBMLBuilder.subtitleTrack(number: 1, codec: "S_HDMV/PGS", extra: [encodings]),
+            ]),
+            EBMLBuilder.cluster(timestamp: 0, blocks: [
+                EBMLBuilder.simpleBlock(track: 1, relativeTimestamp: 0, payload: Array(deflated)),
+            ]),
+        ])
+
+        let reader = try MKVReader(data: data, url: URL(fileURLWithPath: "/compressed.mkv"))
+        guard case .pgs(let extracted) = try reader.extract(trackNumber: 1) else {
+            Issue.record("expected PGS")
+            return
+        }
+        let stream = try PGSStream(data: extracted)
+        #expect(stream.cues.count == 1, "the frame was inflated before it reached the decoder")
+        #expect(try stream.bitmap(at: 0) != nil)
+    }
+
+    @Test func anEncryptedTrackIsReportedRatherThanReturnedEmpty() throws {
+        // ContentEncodingType 1 is encryption; nothing can be decoded.
+        let encoding = EBMLBuilder.element(0x6240,
+                                           EBMLBuilder.uint(0x5032, 1) + EBMLBuilder.uint(0x5033, 1))
+        let encodings = EBMLBuilder.element(0x6D80, encoding)
+        let data = EBMLBuilder.file([
+            EBMLBuilder.info(),
+            EBMLBuilder.tracks([
+                EBMLBuilder.subtitleTrack(number: 1, codec: "S_HDMV/PGS", extra: [encodings]),
+            ]),
+        ])
+        let info = try MKVReader(data: data, url: URL(fileURLWithPath: "/enc.mkv")).probe()
+        #expect(info.tracks.isEmpty, "not offered as something we can convert")
+        #expect(info.otherSubtitleCodecs == ["S_HDMV/PGS"])
+    }
+}
+
+/// Deflate with a zlib header, the way a muxer writes it.
+private func zlibCompress(_ data: Data) -> Data? {
+    var stream = z_stream()
+    guard deflateInit_(&stream, 6, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size)) == Z_OK else { return nil }
+    defer { deflateEnd(&stream) }
+    var output = Data(count: data.count * 2 + 64)
+    let produced: Int? = data.withUnsafeBytes { source -> Int? in
+        output.withUnsafeMutableBytes { destination -> Int? in
+            guard let sourceBase = source.bindMemory(to: UInt8.self).baseAddress,
+                  let destinationBase = destination.bindMemory(to: UInt8.self).baseAddress else { return nil }
+            stream.next_in = UnsafeMutablePointer(mutating: sourceBase)
+            stream.avail_in = uInt(data.count)
+            stream.next_out = destinationBase
+            stream.avail_out = uInt(destination.count)
+            guard deflate(&stream, Z_FINISH) == Z_STREAM_END else { return nil }
+            return destination.count - Int(stream.avail_out)
+        }
+    }
+    guard let produced else { return nil }
+    output.removeSubrange(produced...)
+    return output
+}
+
+private func * (lhs: [UInt8], rhs: Int) -> [UInt8] {
+    Array(repeating: lhs, count: rhs).flatMap { $0 }
 }

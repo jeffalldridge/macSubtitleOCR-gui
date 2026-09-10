@@ -45,6 +45,8 @@ public struct TrackInfo: Sendable, Hashable, Identifiable, Codable {
     public let isForced: Bool
     /// Codec private data (the VobSub `.idx` header lines).
     public let codecPrivate: Data?
+    /// How this track's frames are compressed, if at all.
+    var compression: ContentCompression = .none
 
     public init(id: Int,
                 format: BitmapSubtitleFormat,
@@ -54,7 +56,8 @@ public struct TrackInfo: Sendable, Hashable, Identifiable, Codable {
                 name: String? = nil,
                 isDefault: Bool = false,
                 isForced: Bool = false,
-                codecPrivate: Data? = nil) {
+                codecPrivate: Data? = nil,
+                compression: ContentCompression = .none) {
         self.id = id
         self.format = format
         self.codecID = codecID ?? format.codecID
@@ -64,6 +67,11 @@ public struct TrackInfo: Sendable, Hashable, Identifiable, Codable {
         self.isDefault = isDefault
         self.isForced = isForced
         self.codecPrivate = codecPrivate
+        self.compression = compression
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, format, codecID, language, languageBCP47, name, isDefault, isForced, codecPrivate
     }
 
     /// The most specific language tag available: BCP 47 first, then ISO 639.

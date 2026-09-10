@@ -48,14 +48,20 @@ enum ConversionRunner {
                     return cached
                 }
 
-                // Reading one track means walking the entire container, so
-                // pull every bitmap track it has while we are in there. Eight
-                // subtitle tracks used to mean eight full passes; the others
-                // are now already cached by the time they are asked for.
-                let uncached = siblings.filter { sibling in
-                    sibling.id == info.id || cache.cachedURLs(
-                        for: StreamCache.key(for: source.primaryURL, track: sibling),
-                        format: sibling.format) == nil
+                // When the container indexes this track, reading it costs a
+                // few hundred milliseconds and the other tracks are none of
+                // our business. When it does not, every track costs a full
+                // pass over the file, so take them all while we are in there
+                // rather than paying that price once per track.
+                let uncached: [TrackInfo]
+                if source.indexes(tracks: [info]) {
+                    uncached = [info]
+                } else {
+                    uncached = siblings.filter { sibling in
+                        sibling.id == info.id || cache.cachedURLs(
+                            for: StreamCache.key(for: source.primaryURL, track: sibling),
+                            format: sibling.format) == nil
+                    }
                 }
                 let extracted = try source.extract(tracks: uncached, progress: progress)
                 try Task.checkCancellation()

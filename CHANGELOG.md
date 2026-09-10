@@ -6,6 +6,28 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Opening a large file took a minute.** Foundation's "map the file if it is
+  safe" decides safety by volume and declines on most external drives — where
+  declining means copying the file into memory instead. On a 30 GB remux on an
+  external drive that was 58.7 seconds and 1.4 GB of RAM before a single byte
+  was parsed. Mapping unconditionally reads the same file's track list in
+  0.027 seconds.
+- **Reading a subtitle track read the whole film.** Matroska files carry an
+  index saying which parts of the file hold each track. The app now follows
+  it, and reads a few hundred megabytes instead of thirty gigabytes. A track
+  that took about fifty-five seconds now takes 0.07 seconds. Files without an
+  index, and indexes that turn out to be wrong, still fall back to reading
+  everything.
+- **Some tracks came out empty.** Remuxers routinely compress subtitle frames,
+  which the reader did not undo, so the decoder was handed deflated bytes and
+  found nothing. Both compression schemes Matroska defines for subtitles are
+  now handled, and an encrypted track says so instead of appearing blank.
+- **The window froze while a file was being read.** The container walk ran on
+  the main actor, so it blocked the interface — including the progress bar
+  that was meant to show it working.
+
 ## [1.0.0] — 2026-09-10
 
 The app stops being a front-end for command-line tools and becomes a complete

@@ -82,6 +82,13 @@ public enum SubtitleSource: Sendable, Equatable, Hashable {
         return try MKVReader(url: url).extract(trackNumber: track.id, progress: progress)
     }
 
+    /// Whether the container indexes these tracks, so they can be read
+    /// without scanning the whole file.
+    public func indexes(tracks: [TrackInfo]) -> Bool {
+        guard case .mkv(let url) = self, !tracks.isEmpty else { return false }
+        return (try? MKVReader(url: url).indexes(trackNumbers: tracks.map(\.id))) ?? false
+    }
+
     /// Extract several tracks in one pass over the container.
     ///
     /// Reading one track costs a walk of the whole file, so pulling every
