@@ -119,7 +119,7 @@ enum ConversionRunner {
         var recognized: [RecognizedCue] = []
         let events = TrackConverter.run(stream: stream,
                                         options: options.recognition,
-                                        trackLanguage: track.info.preferredLanguageTag)
+                                        trackLanguage: track.effectiveLanguageTag)
         for try await event in events {
             switch event {
             case .indexed(let count):
@@ -162,7 +162,8 @@ enum ConversionRunner {
                                    outputFolder: options.outputFolder,
                                    conflictPolicy: options.conflictPolicy,
                                    existing: OutputNaming.existingNames(in: folder),
-                                   claimed: claimedNames)
+                                   claimed: claimedNames,
+                                   languageOverride: track.languageOverride)
         }
         let text = SRTFile.render(cues.map(\.srtCue))
         try text.write(to: url, atomically: true, encoding: .utf8)

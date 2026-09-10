@@ -26,6 +26,7 @@ struct MainWindow: View {
         @Bindable var ui = ui
         let queue = self.queue
         let removable = selectedFileForRemoval
+        let settings = self.settings
 
         return VStack(spacing: 0) {
             if queue.isEmpty {
@@ -40,6 +41,7 @@ struct MainWindow: View {
                         .frame(minHeight: MainWindowLayout.detailMinimumHeight,
                                idealHeight: MainWindowLayout.detailIdealHeight,
                                maxHeight: .infinity)
+                        .layoutPriority(1)
                 }
             }
             QueueStatusBar()
@@ -64,7 +66,7 @@ struct MainWindow: View {
             }
         }
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: isDropTargeted)
-        .toolbar { toolbar(queue: queue, ui: self.ui, removable: removable) }
+        .toolbar { toolbar(queue: queue, ui: ui, settings: settings, removable: removable) }
         .inspector(isPresented: $ui.isInspectorPresented) {
             InspectorView()
                 .inspectorColumnWidth(min: MainWindowLayout.inspectorMinimumWidth,
@@ -86,6 +88,7 @@ struct MainWindow: View {
     @ToolbarContentBuilder
     private func toolbar(queue: ConversionQueue,
                          ui: AppUIState,
+                         settings: AppSettings,
                          removable: QueueFile?) -> some ToolbarContent {
         ToolbarItemGroup(placement: .navigation) {
             Button {
@@ -121,7 +124,7 @@ struct MainWindow: View {
                 .help("Stop recognizing and leave the rest of the queue (⌘.)")
             } else {
                 Button(recognizeLabel(queue), systemImage: "play.fill") {
-                    startRun(queue)
+                    RunAction.start(queue: queue, settings: settings)
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(!queue.canRun)
@@ -157,18 +160,6 @@ struct MainWindow: View {
             return "Tick at least one track in the list above"
         }
         return "Recognize every ticked track and write its subtitle file (⌘R)"
-    }
-
-    /// Ask for the folder first when that is what the user asked for. The
-    /// panel has to come up before the run starts, not part-way through it.
-    private func startRun(_ queue: ConversionQueue) {
-        if settings.outputDestination.asksBeforeRunning {
-            guard let folder = FileImport.presentFolderPanel() else { return }
-            queue.runOptions.outputFolder = folder
-        } else {
-            queue.runOptions.outputFolder = settings.outputDestination.resolvedFolder
-        }
-        queue.run()
     }
 
     /// "Make 3 Subtitle Files" says what lands on disk. "Recognize" describes

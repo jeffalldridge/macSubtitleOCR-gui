@@ -81,9 +81,10 @@ import Testing
         // The preview is a fixed height, so what is left over is the header
         // plus the cue table. Fewer than a few rows of cues and the pane is
         // not worth showing.
-        let headerHeight = DetailPaneMetrics.verticalPadding * 2 + 44
-        let rowsHeight = MainWindowLayout.detailMinimumHeight - CuePreviewLayout.height - headerHeight
-        expectAtMost(CueTableLayout.thumbnailHeight * 3, rowsHeight,
+        let rowsHeight = MainWindowLayout.detailMinimumHeight - CuePreviewLayout.height
+            - DetailPaneMetrics.headerHeight - CueReviewLayout.controlsHeight
+            - CueTableLayout.headerHeight - 3 * MainWindowLayout.dividerThickness
+        expectAtMost(CueTableLayout.rowHeight * CueTableLayout.minimumVisibleRows, rowsHeight,
                      "room for at least three cues under the preview")
     }
 

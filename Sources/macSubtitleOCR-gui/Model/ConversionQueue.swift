@@ -148,6 +148,11 @@ final class ConversionQueue {
 
     func remove(_ file: QueueFile) {
         guard !isRunning else { return }
+        for track in file.tracks where track.hasUnsavedEdits { saveEdits(for: track) }
+        if let unsaved = file.tracks.first(where: \.hasUnsavedEdits) {
+            selection = .track(unsaved.id)
+            return
+        }
         probeTasks[file.id]?.cancel()
         probeTasks[file.id] = nil
         files.removeAll { $0.id == file.id }
@@ -158,6 +163,8 @@ final class ConversionQueue {
 
     func clear() {
         guard !isRunning else { return }
+        flushPendingEdits()
+        guard !hasUnsavedEdits else { return }
         probeTasks.values.forEach { $0.cancel() }
         probeTasks.removeAll()
         files.removeAll()
@@ -212,6 +219,8 @@ final class ConversionQueue {
 
     func run() {
         guard canRun else { return }
+        flushPendingEdits()
+        guard !hasUnsavedEdits else { return }
         let tracks = includedTracks
         for track in tracks {
             track.status = .queued
@@ -367,6 +376,9 @@ final class ConversionQueue {
         for track in allTracks where track.hasUnsavedEdits {
             saveEdits(for: track)
         }
+        if let unsaved = allTracks.first(where: \.hasUnsavedEdits) {
+            selection = .track(unsaved.id)
+        }
     }
 
     var hasUnsavedEdits: Bool {
@@ -375,12 +387,14 @@ final class ConversionQueue {
 
     /// Persist edits for a track (debounced by the caller).
     func saveEdits(for track: QueueTrack) {
+        track.hasUnsavedEdits = true
         guard let file = file(for: track), track.outputURL != nil else { return }
         do {
             try ConversionRunner.writeSRT(cues: track.cues, for: track, in: file, options: runOptions)
             track.hasUnsavedEdits = false
+            track.saveError = nil
         } catch {
-            track.issues.append("Could not save edits: \(error.localizedDescription)")
+            track.saveError = "Could not save edits: \(error.localizedDescription)"
         }
     }
 }

@@ -17,15 +17,29 @@ struct TrackDetailView: View {
     @State private var saveTask: Task<Void, Never>?
 
     var body: some View {
-        @Bindable var ui = ui
+        let visibleRows = rows
 
-        VStack(spacing: 0) {
+        return VStack(spacing: 0) {
             header
+            if let error = track.saveError {
+                HStack {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                        .textSelection(.enabled)
+                    Spacer()
+                    Button("Retry Save") { queue.saveEdits(for: track) }
+                }
+                .font(.callout)
+                .padding(.horizontal, DetailPaneMetrics.horizontalPadding)
+                .padding(.bottom, DetailPaneMetrics.verticalPadding)
+            }
             Divider()
             CuePreviewView(track: track, cueIndex: selectedCue)
                 .frame(height: CuePreviewLayout.height)
             Divider()
-            content
+            reviewControls(rows: visibleRows)
+            Divider()
+            content(rows: visibleRows)
         }
         .navigationTitle(track.title)
         .navigationSubtitle(subtitle)
@@ -37,9 +51,8 @@ struct TrackDetailView: View {
             saveTask?.cancel()
             if track.hasUnsavedEdits { queue.saveEdits(for: track) }
         }
-        .onChange(of: rows.map(\.id)) { _, ids in
-            if let selectedCue, !ids.contains(selectedCue) { self.selectedCue = ids.first }
-            if selectedCue == nil { selectedCue = ids.first }
+        .onChange(of: visibleRows.map(\.id), initial: true) { _, ids in
+            selectedCue = CueReviewSelection.reconciled(selectedCue, in: ids)
         }
     }
 
@@ -50,11 +63,11 @@ struct TrackDetailView: View {
         return HStack(alignment: .firstTextBaseline, spacing: DetailPaneMetrics.horizontalPadding * 0.75) {
             VStack(alignment: .leading, spacing: DetailPaneMetrics.stackSpacing) {
                 HStack(spacing: DetailPaneMetrics.titleSpacing) {
-                    Text(track.title)
+                    TrackLanguagePicker(track: track, isRunning: queue.isRunning)
                         .font(.title3.weight(.semibold))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .help(track.title)
+                    if let name = track.info.name, !name.isEmpty {
+                        Text(name).lineLimit(1).truncationMode(.tail).help(name)
+                    }
                     if track.info.isDefault { Badge(text: "Default") }
                     if track.info.isForced { Badge(text: "Forced", tint: .orange) }
                 }
@@ -139,7 +152,7 @@ struct TrackDetailView: View {
     // MARK: - Content
 
     @ViewBuilder
-    private var content: some View {
+    private func content(rows: [CueRowModel]) -> some View {
         switch track.loadState {
         case .notLoaded, .loading:
             VStack(spacing: 10) {
@@ -154,7 +167,20 @@ struct TrackDetailView: View {
                                    description: Text(message))
         case .loaded:
             if rows.isEmpty {
-                ContentUnavailableView.search(text: search)
+                if !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    ContentUnavailableView.search(text: search)
+                } else if ui.showNeedsReviewOnly, track.hasResults {
+                    ContentUnavailableView {
+                        Label("Nothing left to review", systemImage: "checkmark.circle")
+                    } description: {
+                        Text("All flagged cues have been edited or marked as reviewed.")
+                    } actions: {
+                        Button("Show All Cues") { ui.showNeedsReviewOnly = false }
+                    }
+                } else {
+                    ContentUnavailableView("No subtitle cues", systemImage: "text.bubble",
+                                           description: Text("This track contains no displayable subtitle cues."))
+                }
             } else {
                 CueTable(track: track, rows: rows, selection: $selectedCue, onEdit: cueEdited)
                     .popoverTip(EditCueTip(), arrowEdge: .top)
@@ -169,17 +195,42 @@ struct TrackDetailView: View {
 
     private var rows: [CueRowModel] {
         guard let stream = track.stream else { return [] }
-        let cuesByIndex = Dictionary(uniqueKeysWithValues: track.cues.map { ($0.index, $0) })
-        let query = search.trimmingCharacters(in: .whitespaces).lowercased()
-        return stream.cues.compactMap { info in
-            let cue = cuesByIndex[info.index]
-            if ui.showNeedsReviewOnly, track.hasResults, !(cue?.needsReview ?? false) { return nil }
-            if !query.isEmpty {
-                let haystack = (cue?.text ?? "").lowercased() + " " + Formatters.clock(info.start)
-                if !haystack.contains(query) { return nil }
+        return CueReviewSelection.rows(in: stream.cues, recognized: track.cues,
+                                       query: search,
+                                       needsReviewOnly: ui.showNeedsReviewOnly && track.hasResults)
+    }
+
+    private func reviewControls(rows: [CueRowModel]) -> some View {
+        let ids = rows.map(\.id)
+        let position = selectedCue.flatMap { ids.firstIndex(of: $0) }
+        let cue = rows.first { $0.id == selectedCue }?.cue
+        return HStack(spacing: DetailPaneMetrics.titleSpacing) {
+            Button("Previous Cue", systemImage: "chevron.up") {
+                if let position, position > 0 { selectedCue = ids[position - 1] }
             }
-            return CueRowModel(info: info, cue: cue)
+            .disabled(position == nil || position == 0)
+            .help("Select the previous visible cue")
+            Button("Next Cue", systemImage: "chevron.down") {
+                if let position, position + 1 < ids.count { selectedCue = ids[position + 1] }
+            }
+            .disabled(position == nil || position == ids.count - 1)
+            .help("Select the next visible cue")
+            Text(position.map { "\($0 + 1) of \(ids.count.formatted())" } ?? "\(ids.count.formatted()) cues")
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+            Spacer()
+            if let cue, cue.needsReview {
+                Button("Mark Reviewed", systemImage: "checkmark") {
+                    cue.isMarkedReviewed = true
+                }
+                .labelStyle(.titleAndIcon)
+                .help("Confirm this cue is correct without changing its text")
+            }
         }
+        .labelStyle(.iconOnly)
+        .controlSize(.small)
+        .padding(.horizontal, DetailPaneMetrics.horizontalPadding)
+        .frame(height: CueReviewLayout.controlsHeight)
     }
 
     // MARK: - Editing
@@ -279,6 +330,7 @@ struct TrackActionsMenu: View {
         // A menu's items are built and run in their own hosting context, so
         // the queue is captured here rather than looked up in there.
         let queue = self.queue
+        let undoManager = self.undoManager
         return Menu {
             Button("Translate…", systemImage: "character.book.closed") { showTranslate = true }
             if #available(macOS 26, *), CleanupAssistant.isAvailable {
@@ -286,7 +338,7 @@ struct TrackActionsMenu: View {
                     .disabled(track.reviewCount == 0)
             }
             Divider()
-            Button("Revert All Edits") { revertAll(queue) }
+            Button("Revert All Edits") { revertAll(queue, undoManager: undoManager) }
                 .disabled(track.editedCount == 0)
         } label: {
             Label("Actions", systemImage: "ellipsis.circle")
@@ -305,7 +357,7 @@ struct TrackActionsMenu: View {
 
     /// Throwing away every correction the user made is the most destructive
     /// thing in this window, and it was the one edit with no way back.
-    private func revertAll(_ queue: ConversionQueue) {
+    private func revertAll(_ queue: ConversionQueue, undoManager: UndoManager?) {
         let previous = track.cues.map { ($0, $0.text) }
         for cue in track.cues { cue.revert() }
         // The table shows the recognized text again; the file has to agree, or

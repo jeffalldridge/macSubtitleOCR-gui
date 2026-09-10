@@ -5,6 +5,7 @@ struct CuePreviewView: View {
     let track: QueueTrack
     let cueIndex: Int?
     @State private var image: CGImage?
+    @State private var isLoading = false
 
     var body: some View {
         ZStack {
@@ -20,8 +21,11 @@ struct CuePreviewView: View {
                                 .interpolation(.high)
                                 .aspectRatio(contentMode: .fit)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        } else {
+                        } else if isLoading {
                             ProgressView().controlSize(.small)
+                        } else {
+                            Label("No subtitle image available", systemImage: "photo")
+                                .foregroundStyle(.white.opacity(0.6))
                         }
                     }
                     .padding(.horizontal, CuePreviewLayout.imageInset)
@@ -46,8 +50,13 @@ struct CuePreviewView: View {
         }
         .task(id: "\(track.id)/\(cueIndex ?? -1)") {
             image = nil
+            isLoading = false
             guard let cueIndex else { return }
-            image = await CueImageCache.shared.image(for: track, index: cueIndex)
+            isLoading = true
+            let loaded = await CueImageCache.shared.image(for: track, index: cueIndex)
+            guard !Task.isCancelled else { return }
+            image = loaded
+            isLoading = false
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(cueIndex.map { "Preview of cue \($0 + 1)" } ?? "Cue preview")

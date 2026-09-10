@@ -16,7 +16,7 @@ struct DetailView: View {
         } else {
             ContentUnavailableView("Select a track to review it",
                                    systemImage: "list.bullet.rectangle",
-                                   description: Text("Tick the tracks you want in the list above, then click Recognize."))
+                                   description: Text("Tick the tracks you want in the list above, then click Make Subtitles."))
                 .navigationTitle("macSubtitleOCR")
         }
     }
@@ -72,7 +72,7 @@ struct FileDetailView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         LabeledContent("Bitmap tracks", value: trackSummary)
-                        Text("Each included track becomes its own .srt file next to the source, named after its language and track name.")
+                        Text("Each included track becomes its own .srt file in the destination chosen in the toolbar, named after its language and track name.")
                             .font(.callout)
                             .foregroundStyle(.secondary)
                     }
@@ -90,9 +90,9 @@ struct FileDetailView: View {
                         Button("Include All") { queue.includeAll(in: file) }
                         Button("Include None") { queue.includeNone(in: file) }
                         Spacer()
-                        Button(runLabel) { queue.run() }
-                            .buttonStyle(.borderedProminent)
-                            .disabled(!queue.canRun || file.includedTracks.isEmpty)
+                        Text("Use Make Subtitles in the toolbar to convert the included tracks.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
                     }
                     .disabled(queue.isRunning)
                 }
@@ -109,11 +109,6 @@ struct FileDetailView: View {
         if total == 1 { return included == 1 ? "1 track, included" : "1 track, not included" }
         if included == total { return "\(total) tracks, all included" }
         return "\(included) of \(total) tracks included"
-    }
-
-    private var runLabel: String {
-        let count = file.includedTracks.count
-        return count == 1 ? "Recognize 1 Track" : "Recognize \(count) Tracks"
     }
 
     private func otherTracksNote(_ codecs: [String]) -> String {

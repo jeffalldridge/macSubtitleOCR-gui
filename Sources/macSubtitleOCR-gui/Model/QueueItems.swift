@@ -82,6 +82,8 @@ final class QueueTrack: Identifiable {
     var issues: [String] = []
     /// Set once the SRT on disk differs from `cues` (debounced writes).
     var hasUnsavedEdits = false
+    /// A failed write remains actionable until a later save succeeds.
+    var saveError: String?
 
     init(fileID: UUID, info: TrackInfo, isIncluded: Bool) {
         self.fileID = fileID
@@ -89,7 +91,16 @@ final class QueueTrack: Identifiable {
         self.isIncluded = isIncluded
     }
 
-    var languageName: String { LanguageCode.displayName(info.preferredLanguageTag) }
+    /// User choice for this queue entry; source metadata and extraction stay unchanged.
+    var languageOverride: String?
+    var effectiveLanguageTag: String? { languageOverride ?? info.preferredLanguageTag }
+    var languageName: String {
+        if let languageOverride {
+            return Locale.current.localizedString(forIdentifier: languageOverride)
+                ?? LanguageCode.displayName(languageOverride)
+        }
+        return LanguageCode.displayName(info.preferredLanguageTag)
+    }
 
     /// "English" or "English — SDH".
     var title: String {

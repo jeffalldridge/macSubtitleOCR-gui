@@ -486,6 +486,54 @@ private let fixtures = URL(fileURLWithPath: #filePath)
         #expect(!queue.hasUnsavedEdits)
     }
 
+    @Test(arguments: [false, true]) func removingOrClearingFlushesCorrections(clear: Bool) throws {
+        let (queue, file, track, directory) = try pendingQueue()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let output = try #require(track.outputURL)
+        if clear { queue.clear() } else { queue.remove(file) }
+        #expect(queue.isEmpty)
+        #expect(SRTFile.parse(try String(contentsOf: output, encoding: .utf8)).first?.text == "corrected")
+    }
+
+    @Test func failedSaveKeepsTheTrackAndCanBeRetried() throws {
+        let (queue, file, track, directory) = try pendingQueue()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let validOutput = track.outputURL
+        track.outputURL = directory.appendingPathComponent("missing/output.srt")
+        queue.remove(file)
+        #expect(queue.files.count == 1)
+        #expect(queue.selection == .track(track.id))
+        #expect(track.hasUnsavedEdits)
+        #expect(track.saveError != nil)
+        queue.clear()
+        #expect(queue.files.count == 1)
+        queue.run()
+        #expect(!queue.isRunning)
+        #expect(track.cues.first?.text == "corrected")
+        track.outputURL = validOutput
+        queue.saveEdits(for: track)
+        #expect(!track.hasUnsavedEdits)
+        #expect(track.saveError == nil)
+    }
+
+    private func pendingQueue() throws -> (ConversionQueue, QueueFile, QueueTrack, URL) {
+        let directory = try temporaryDirectory()
+        let defaults = try #require(UserDefaults(suiteName: "pending-removal-\(UUID())"))
+        let queue = ConversionQueue(settings: AppSettings(defaults: defaults))
+        let source = try SubtitleSource.open(fixtures.appendingPathComponent("sintel.sup"))
+        let file = QueueFile(source: source)
+        let info = try source.probe()
+        file.state = .ready(info)
+        let track = QueueTrack(fileID: file.id, info: TrackInfo(id: 1, format: .pgs), isIncluded: true)
+        track.cues = [ReviewCue(index: 0, start: 1, end: 2, text: "original")]
+        track.cues[0].text = "corrected"
+        track.outputURL = directory.appendingPathComponent("output.srt")
+        track.hasUnsavedEdits = true
+        file.tracks = [track]
+        queue.files = [file]
+        return (queue, file, track, directory)
+    }
+
     @Test func flushIsHarmlessWithNothingPending() throws {
         let name = "pending-empty-\(UUID())"
         let defaults = try #require(UserDefaults(suiteName: name))

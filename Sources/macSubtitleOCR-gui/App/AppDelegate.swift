@@ -51,6 +51,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         for window in NSApp.windows { window.makeFirstResponder(nil) }
         Self.queue?.flushPendingEdits()
 
+        if let queue = Self.queue, queue.hasUnsavedEdits {
+            let alert = NSAlert()
+            alert.messageText = "Some subtitle edits couldn’t be saved."
+            alert.informativeText = "Your corrections are still in the app. Check the output folder and use Retry Save before quitting."
+            alert.addButton(withTitle: "Keep Open")
+            alert.addButton(withTitle: "Quit Without Saving")
+            alert.alertStyle = .warning
+            if alert.runModal() == .alertSecondButtonReturn {
+                queue.cancel()
+                return .terminateNow
+            }
+            if let track = queue.allTracks.first(where: \.hasUnsavedEdits) {
+                queue.selection = .track(track.id)
+            }
+            return .terminateCancel
+        }
+
         guard let queue = Self.queue, queue.isRunning else { return .terminateNow }
         let alert = NSAlert()
         alert.messageText = "Recognition is still running."

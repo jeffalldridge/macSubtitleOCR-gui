@@ -41,7 +41,7 @@ struct CueTable: View {
                    ideal: CueTableLayout.timeIdealWidth,
                    max: CueTableLayout.timeMaximumWidth)
 
-            TableColumn("Text") { row in
+            TableColumn(track.hasResults ? "Text · Edits save to SRT" : "Text") { row in
                 if let cue = row.cue {
                     CueTextCell(cue: cue, onEdit: onEdit)
                 } else {
@@ -133,6 +133,7 @@ struct CueTextCell: View {
     private func commit() {
         let previous = editingFrom ?? cue.text
         let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        defer { editingFrom = nil }
         guard trimmed != cue.text else { return }
         cue.text = trimmed
         draft = trimmed
@@ -161,7 +162,10 @@ struct CueThumbnail: View {
         }
         .padding(.vertical, 3)
         .task(id: "\(track.id)/\(index)") {
-            image = await CueImageCache.shared.image(for: track, index: index)
+            image = nil
+            let loaded = await CueImageCache.shared.image(for: track, index: index)
+            guard !Task.isCancelled else { return }
+            image = loaded
         }
     }
 }

@@ -17,12 +17,14 @@ enum MainWindowLayout {
     /// The queue is a reference, not the work surface: a handful of rows is
     /// enough, and the user drags the divider when they want more.
     static let queueMinimumHeight: CGFloat = 116
-    static let queueIdealHeight: CGFloat = 208
+    static let queueIdealHeight: CGFloat = 148
 
     /// Below the divider: a header, the cue image at a legible size, and
     /// enough of the cue table to scroll.
-    static let detailMinimumHeight: CGFloat = 396
-    static let detailIdealHeight: CGFloat = 620
+    static let detailMinimumHeight = DetailPaneMetrics.headerHeight + CuePreviewLayout.height
+        + CueReviewLayout.controlsHeight + CueTableLayout.headerHeight
+        + CueTableLayout.minimumVisibleRows * CueTableLayout.rowHeight + 3 * dividerThickness
+    static let detailIdealHeight: CGFloat = 560
 
     static let minimumHeight = queueMinimumHeight + detailMinimumHeight
         + dividerThickness + StatusBarLayout.height
@@ -84,13 +86,18 @@ enum CueTableLayout {
     /// A 16:9 subtitle strip stays readable down to this width.
     static let imageMinimumWidth: CGFloat = 120
     static let imageIdealWidth: CGFloat = 240
-    static let imageMaximumWidth: CGFloat = 440
+    static let imageMaximumWidth: CGFloat = 280
     /// "1:47:03.250 → 1:47:05.220" in a monospaced face.
-    static let timeMinimumWidth: CGFloat = 124
+    static let timeMinimumWidth: CGFloat = 190
     static let timeIdealWidth: CGFloat = 190
     static let timeMaximumWidth: CGFloat = 230
     /// Two lines of dialogue without wrapping mid-word.
-    static let textMinimumWidth: CGFloat = 240
+    static let textMinimumWidth: CGFloat = 320
+
+    /// Include the table header and row insets when budgeting vertical space.
+    static let headerHeight: CGFloat = 26
+    static let rowHeight: CGFloat = thumbnailHeight + 8
+    static let minimumVisibleRows: CGFloat = 3
 
     static let thumbnailHeight: CGFloat = 40
     static let horizontalChrome: CGFloat = 26
@@ -101,9 +108,9 @@ enum CueTableLayout {
 
 /// The selected cue shown at full size above the cue table.
 enum CuePreviewLayout {
-    /// A 1920×1080 subtitle strip is about a fifth of the frame height; this
-    /// shows one at roughly its on-screen size on a laptop display.
-    static let height: CGFloat = 190
+    /// A two-line subtitle plus its caption, leaving the table as the main
+    /// work surface even on a laptop. Wider images scale to fit this space.
+    static let height: CGFloat = 144
     static let imageInset: CGFloat = 24
     static let captionSpacing: CGFloat = 8
 }
@@ -136,6 +143,8 @@ enum DetailPaneMetrics {
     static let verticalPadding: CGFloat = 12
     static let titleSpacing: CGFloat = 6
     static let stackSpacing: CGFloat = 3
+    /// Two lines of title/status plus the header's vertical padding.
+    static let headerHeight: CGFloat = 44 + verticalPadding * 2
 }
 
 /// The empty queue.
@@ -146,4 +155,14 @@ enum EmptyQueueLayout {
     static let borderInset: CGFloat = 24
     static let cornerRadius: CGFloat = 16
     static let dropBorderWidth: CGFloat = 2
+}
+
+/// A compact navigation row between the preview and the editable cue table.
+enum CueReviewLayout {
+    static let controlsHeight: CGFloat = 32
+}
+
+/// Keeps the folder icon and text away from the toolbar capsule’s curved edges.
+enum OutputDestinationLayout {
+    static let labelInset: CGFloat = 6
 }

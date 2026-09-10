@@ -28,6 +28,7 @@ struct OutputDestinationMenu: View {
             Button("Choose Folder…") { chooseFolder() }
         } label: {
             Label(destination.menuTitle, systemImage: "folder")
+                .padding(.horizontal, OutputDestinationLayout.labelInset)
         }
         .labelStyle(.titleAndIcon)
         .menuStyle(.borderlessButton)

@@ -20,7 +20,7 @@ struct TranslationExportView: View {
     @State private var result: Result<URL, Error>?
 
     private var source: Locale.Language? {
-        LanguageCode.language(track.info.preferredLanguageTag)
+        LanguageCode.language(track.effectiveLanguageTag)
             ?? queue.runOptions.languages.first.flatMap { LanguageCode.language($0) }
     }
 

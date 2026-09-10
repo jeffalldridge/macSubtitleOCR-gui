@@ -12,6 +12,9 @@ struct InspectorView: View {
         Form {
             Section("Recognition") {
                 LanguageChecklist(selection: $queue.runOptions.languages)
+                Text("Choose each track’s language in the queue. These hints help recognition when a track’s language is unknown.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
                 Toggle("Invert images before recognition", isOn: $queue.runOptions.invert)
                     .help("Try this when captions are dark text on a light box.")
@@ -65,7 +68,7 @@ struct InspectorView: View {
     }
 
     private func previewName(track: QueueTrack, file: QueueFile) -> String {
-        let code = OutputNaming.languageCode(for: track.info, fallback: queue.runOptions.fallbackLanguage)
+        let code = OutputNaming.languageCode(for: track.info, fallback: queue.runOptions.fallbackLanguage, override: track.languageOverride)
         return OutputNaming.filename(base: file.url.deletingPathExtension().lastPathComponent,
                                      languageCode: code, trackName: track.info.name)
     }
@@ -74,12 +77,12 @@ struct InspectorView: View {
 /// Multi-select of Vision's supported languages, shown as a menu with check marks.
 struct LanguageChecklist: View {
     @Binding var selection: [String]
-    @State private var supported: [Locale.Language] = []
+    private let catalog = TrackLanguageCatalog.shared
 
     var body: some View {
-        LabeledContent("Languages") {
+        LabeledContent("Recognition hints") {
             Menu {
-                ForEach(supported, id: \.minimalIdentifier) { language in
+                ForEach(catalog.languages, id: \.minimalIdentifier) { language in
                     Toggle(isOn: binding(for: language)) {
                         Text(Self.name(for: language))
                     }
@@ -91,10 +94,10 @@ struct LanguageChecklist: View {
             }
             .menuStyle(.borderlessButton)
             .fixedSize(horizontal: false, vertical: true)
-            .help("Languages to try, in order. A track’s own language is always added first.")
+            .help("Additional languages to try. The language assigned to each track takes priority.")
         }
         .task {
-            supported = await TextRecognizer.supportedLanguages()
+            await catalog.load()
         }
     }
 
@@ -120,7 +123,7 @@ struct LanguageChecklist: View {
     }
 
     static func name(for language: Locale.Language) -> String {
-        Locale.current.localizedString(forIdentifier: language.maximalIdentifier)
+        Locale.current.localizedString(forIdentifier: language.minimalIdentifier)
             ?? LanguageCode.displayName(language.minimalIdentifier)
     }
 }

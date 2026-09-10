@@ -55,7 +55,7 @@ struct MacSubtitleOCRApp: App {
                 }
         }
         .windowResizability(.contentMinSize)
-        .defaultSize(width: 1040, height: 680)
+        .defaultSize(width: MainWindowLayout.idealWidth, height: MainWindowLayout.idealHeight)
         // The main window must always open. Scene restoration can decide
         // otherwise from a stale record — a bundle that once ran a different
         // scene structure, for instance, as every install upgraded from 0.2

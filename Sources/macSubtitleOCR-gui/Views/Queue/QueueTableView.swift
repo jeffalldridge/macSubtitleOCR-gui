@@ -67,9 +67,7 @@ struct QueueTableView: View {
                     Text(file.info?.title ?? "").foregroundStyle(.secondary).lineLimit(1)
                 case .track(let track):
                     HStack(spacing: 4) {
-                        Text(track.languageName).lineLimit(1)
-                        if track.info.isForced { Badge(text: "Forced", tint: .orange) }
-                        if track.info.isDefault, !track.info.isForced { Badge(text: "Default") }
+                        TrackLanguagePicker(track: track, isRunning: isRunning)
                     }
                 }
             }

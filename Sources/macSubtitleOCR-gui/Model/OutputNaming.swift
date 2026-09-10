@@ -8,8 +8,8 @@ import SubtitleEngine
 nonisolated enum OutputNaming {
     /// The language code used in filenames: the track's, else the fallback,
     /// as an ISO 639-2 three-letter code.
-    static func languageCode(for track: TrackInfo, fallback: String?) -> String? {
-        LanguageCode.alpha3(track.preferredLanguageTag) ?? LanguageCode.alpha3(fallback)
+    static func languageCode(for track: TrackInfo, fallback: String?, override: String? = nil) -> String? {
+        LanguageCode.alpha3(override ?? track.preferredLanguageTag) ?? LanguageCode.alpha3(fallback)
     }
 
     static func filename(base: String, languageCode: String?, trackName: String?, suffix: Int? = nil) -> String {
@@ -35,10 +35,11 @@ nonisolated enum OutputNaming {
                     outputFolder: URL?,
                     conflictPolicy: AppSettings.ConflictPolicy,
                     existing: Set<String>,
-                    claimed: Set<String> = []) -> URL {
+                    claimed: Set<String> = [],
+                    languageOverride: String? = nil) -> URL {
         let folder = outputFolder ?? sourceURL.deletingLastPathComponent()
         let base = sourceURL.deletingPathExtension().lastPathComponent
-        let code = languageCode(for: track, fallback: fallbackLanguage)
+        let code = languageCode(for: track, fallback: fallbackLanguage, override: languageOverride)
         let taken = Set(existing.map { $0.lowercased() })
         let claimed = Set(claimed.map { $0.lowercased() })
 
