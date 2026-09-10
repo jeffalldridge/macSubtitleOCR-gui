@@ -229,6 +229,32 @@ One main window (`WindowGroup`, default 1000 × 660, min 760 × 480), a
   (Alternate rank) so the app appears in Open With and accepts Dock drops.
   Dropping `.sub` or `.idx` locates its sibling automatically.
 
+## Apple platform integrations
+
+Everything below uses a system framework; nothing is downloaded or sent off
+the Mac. Features that need a newer OS are gated with `#available` and are
+hidden, not disabled, on older systems.
+
+| Integration | Framework | Minimum | What it does |
+|---|---|---|---|
+| Text recognition | Vision `RecognizeTextRequest` | 15 | In-process OCR with per-line confidence; automatic language detection when a track has no language tag. |
+| Clean Up with Apple Intelligence | FoundationModels | 26 (Apple Intelligence on) | For cues flagged for review, asks the on-device model to fix OCR character mistakes only, keeping meaning and line breaks. Results appear as suggestions with a before/after diff; the user accepts each one or all. Shown only when `SystemLanguageModel.default.availability == .available`. |
+| Translate… | Translation `TranslationSession` | 15 | Exports a translated copy of a recognized track as `<base>.<lang>.srt`, using on-device language packs (the system prompts to download a pack if needed). |
+| Writing Tools | AppKit / SwiftUI | 15.1 | Available automatically in the cue text editor. |
+| Shortcuts and Spotlight | App Intents | 15 | "Recognize Subtitles" intent: takes files, optional language, returns SRT files. Registered as an App Shortcut. |
+| Finder Services | NSServices | 15 | "Recognize Subtitles with macSubtitleOCR" in the Finder context menu adds the selected files to the queue. |
+| Open With / Dock drops | Launch Services document types | 15 | The app appears in Open With for MKV, MKS, SUP, SUB, IDX. |
+| Open Recent | `NSDocumentController` | 15 | File ▸ Open Recent and the Dock menu. |
+| Notifications | UserNotifications | 15 | Completion notice when the app is in the background. |
+| Dock progress | `NSDockTile` | 15 | Progress bar on the Dock icon during a run. |
+| Onboarding tips | TipKit | 15 | Two tips: drop-to-add and inline cue editing. Shown once. |
+| Haptics | SwiftUI `sensoryFeedback` | 15 | Success feedback on trackpads when a run completes. |
+| Diagnostics | `os.Logger`, `OSSignposter` | 15 | Engine logs and intervals visible in Console and Instruments. |
+| Icon | Icon Composer `.icon` via `actool` | build-time (Xcode 26) | Layered icon that renders as Liquid Glass on macOS 26 and as a flat icon on 15. |
+| Liquid Glass | SwiftUI (macOS 26 SDK) | 26 | Standard toolbar, sidebar, and inspector adopt the system look; `ToolbarSpacer` groups toolbar items where available. |
+| Language mapping | Foundation `Locale.Language` | 15 | ISO 639 handling and localized language names. |
+| Concurrency | Swift 6.2 default MainActor isolation (app target) | build-time | Fewer annotations in UI code; the engine stays nonisolated. |
+
 ## Error handling
 
 - Probe failures (not a Matroska file, no bitmap tracks) mark the file
