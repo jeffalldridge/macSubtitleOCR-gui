@@ -1,58 +1,59 @@
 name: Release
 
-# Triggered when you push a tag like `v0.1.0`. Builds a notarized, stapled
-# .app, packages it as a .dmg, and uploads to a new GitHub Release.
+# Triggered by a tag like `v1.0.0`. Builds a universal, notarized, stapled
+# .app, packages it as a notarized .dmg, and publishes a GitHub Release.
 #
-# Required GitHub Repository Secrets (Settings → Secrets and variables → Actions):
+# Required repository secrets (Settings → Secrets and variables → Actions):
 #
 #   MACOS_CERT_P12          base64-encoded Developer ID Application .p12
-#                           (export from Keychain Access; encode with
-#                           `base64 -i cert.p12 | pbcopy`)
-#   MACOS_CERT_PASSWORD     password set when exporting the .p12
-#   KEYCHAIN_PASSWORD       any random string (used for the runner's
-#                           ephemeral keychain)
+#   MACOS_CERT_PASSWORD     password used when exporting the .p12
+#   KEYCHAIN_PASSWORD       any random string (for the runner's keychain)
 #   DEV_ID                  e.g. "Developer ID Application: Jeff Alldridge (TEAMID)"
 #   NOTARY_KEY              base64-encoded App Store Connect API .p8
-#   NOTARY_KEY_ID           10-char Key ID from App Store Connect
-#   NOTARY_ISSUER_ID        UUID Issuer ID from App Store Connect
+#   NOTARY_KEY_ID           10-character Key ID
+#   NOTARY_ISSUER_ID        Issuer UUID
 
 on:
   push:
     tags: ['v*.*.*']
-  # Fallback: tag pushes from some credentials (GitHub App / Actions tokens)
-  # do not create workflow runs, so a tag alone cannot be relied on to cut a
-  # release. Dispatch this workflow against the tag ref to build it manually:
-  #   gh workflow run Release --ref v0.1.1
+  # Tag pushes made with some credentials do not start workflow runs, so the
+  # release can also be built by hand:  gh workflow run Release --ref v1.0.0
   workflow_dispatch:
 
 permissions:
-  contents: write   # needed to create releases
+  contents: write
 
 jobs:
   release:
     name: Build, notarize, and publish
-    # macos-15 ships Xcode 16+ with Swift 6 (required by the macSubtitleOCR
-    # submodule's swift-tools-version). macos-14 has Swift 5.10 and fails.
-    runs-on: macos-15
-    timeout-minutes: 45
+    runs-on: macos-26
+    timeout-minutes: 60
 
     steps:
-      - name: Checkout (with submodules)
+      - name: Checkout
         uses: actions/checkout@v7
-        with:
-          submodules: recursive
 
-      - name: Select Xcode 16
+      - name: Select Xcode 26
         run: |
-          sudo xcode-select -s /Applications/Xcode_16.2.app || \
-            sudo xcode-select -s /Applications/Xcode_16.1.app || \
-            sudo xcode-select -s /Applications/Xcode_16.0.app
+          sudo xcode-select -s /Applications/Xcode_26.6.app || \
+            sudo xcode-select -s /Applications/Xcode_26.5.app || \
+            sudo xcode-select -s /Applications/Xcode_26.4.1.app
           swift --version
           xcodebuild -version
 
       - name: Read tag version
         id: version
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Check the tag matches Info.plist
+        run: |
+          set -euo pipefail
+          plist=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Resources/Info.plist)
+          tag="${{ steps.version.outputs.version }}"
+          if [[ "$plist" != "$tag" ]]; then
+            echo "Tag v$tag does not match CFBundleShortVersionString $plist." >&2
+            exit 1
+          fi
 
       - name: Import Developer ID certificate
         env:
@@ -89,11 +90,13 @@ jobs:
               --issuer "$NOTARY_ISSUER_ID"
           rm -f "$KEY_PATH"
 
-      - name: Build, sign, notarize, package, notarize-dmg
+      - name: Test
+        run: make test
+
+      - name: Build, sign, notarize, package, notarize the dmg
         env:
           DEV_ID: ${{ secrets.DEV_ID }}
-        run: |
-          make release
+        run: make release
 
       - name: Compute checksums
         run: |
@@ -107,7 +110,7 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
-          name: macSubtitleOCR-gui ${{ github.ref_name }}
+          name: macSubtitleOCR ${{ github.ref_name }}
           files: |
             build/macSubtitleOCR-gui.dmg
             build/SHA256SUMS.txt
